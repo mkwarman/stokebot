@@ -40,8 +40,15 @@ def example_handle_command(command, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
     	             	  text=response, as_user=True)
 
-#def handle_target_user_text(text, channel):
-    
+def handle_target_user_text(text, channel):
+    print("Handling target user text")
+    response = "Target user said: " + text
+    print("Sending \"chat.postMessage\":" \
+            "\n  channel=\"" + channel + "\"" \
+            "\n  text=\"" + response + "\"" \
+            "\n  as_user=True")
+    slack_client.api_call("chat.postMessage", channel=channel,
+                          text=response, as_user=True)
 
 def example_parse_slack_output(slack_rtm_output):
     """
@@ -84,9 +91,10 @@ if __name__ == "__main__":
         at_target_user_id = get_user_id(TARGET_USER_NAME) # Get the target user's ID
 
         while True:
-            command, channel = listen_for_user(slack_client.rtm_read())
-            if command and channel:
+            text, channel = listen_for_user(slack_client.rtm_read())
+            if text and channel:
                 # handle_command(command, channel)
+                handle_target_user_text(text, channel)
                 time.sleep(READ_WEBSOCKET_DELAY)
     else:
         print("Connection failed. Invalid Slack token or Bot ID?")
