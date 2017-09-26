@@ -71,7 +71,7 @@ def read_definition(word):
 
     for row in rows:
         print(row)
-        print(row[1] + row[2] + row[3] + row[4] + row[5])
+        print(row[1] + row[2] + row[3] + row[4] + str(row[5]))
         definition.from_database(row[1], row[2], row[3], row[4], row[5])
         definitions.append(definition)
 

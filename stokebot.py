@@ -60,7 +60,7 @@ def handle_read_definition(text, channel, message_data):
     print(definitions)
     for definition in definitions:
         print(definition)
-        api.send_reply((definition.word + " means " + definition.definition), channel)
+        api.send_reply((definition.word + " means " + definition.meaning), channel)
 
 def handle_add_definition(text, channel, message_data):
     command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
