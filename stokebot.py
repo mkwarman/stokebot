@@ -10,6 +10,7 @@ BOT_NAME = "stokebot"
 TARGET_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
 ADD_COMMAND = "add"
+READ_COMMAND = "what is"
 
 # globals
 global at_bot_id
@@ -25,17 +26,17 @@ def handle_target_user_text(text, channel, message_data):
             "\n  channel=\"" + channel + "\"" \
             "\n  text=\"" + response + "\"" \
             "\n  as_user=True")
-    print(at_bot_id)
-    print(text)
-    print(text.split("<@" + at_bot_id + ">")[1].strip().lower())
     if at_bot_id in text and text.split("<@" + at_bot_id + ">")[1].strip().lower().startswith(ADD_COMMAND):
         print("about to handle_add_definition")
         handle_add_definition(text, channel, message_data)
         return
+    elif at_bot_id in text and text.split("<@" + at_bot_id + ">")[1].strip().lower().startswith(READ_COMMAND):
+        print("about to handle_read_definition")
+        handle_read_definition(text, channel, message_data)
+        return
     print("about to respond - unrecognized command: " + text)
     print("at_bot_id: " + at_bot_id)
-    slack_client.api_call("chat.postMessage", channel=channel,
-                          text=response, as_user=True)
+    api.send_reply(text, channel)
 
 def listen_for_user(slack_rtm_output):
     """
@@ -50,6 +51,16 @@ def listen_for_user(slack_rtm_output):
                 return output['text'], output['channel'], output
                 # return None, None
     return None, None, None
+
+def handle_read_definition(text, channel, message_data):
+    command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
+    word = command[0][len(READ_COMMAND):].strip()
+    print("word: " + word)
+    definitions = dao.read_definition(word)
+    print(definitions)
+    for definition in definitions:
+        print(definition)
+        api.send_reply((definition.word + " means " + definition.definition), channel)
 
 def handle_add_definition(text, channel, message_data):
     command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
@@ -67,6 +78,9 @@ def handle_add_definition(text, channel, message_data):
 
     definition_object.new(word, definition, user_name, channel_name)
 
+    api.send_reply(str(definition_object), channel)
+    print("attempting to insert into database")
+    dao.insert_definition(definition_object)
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = 1 # 1 second delay between reading from firehose

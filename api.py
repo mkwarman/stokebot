@@ -56,3 +56,7 @@ def get_name_from_id(id):
         return get_group_name(id)
     else:
         print("get_name_from_id encountered unhandled ID")
+
+def send_reply(text, channel):
+    slack_client.api_call("chat.postMessage", channel=channel,
+                          text=text, as_user=True)
