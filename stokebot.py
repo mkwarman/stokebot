@@ -21,22 +21,24 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_target_user_text(text, channel, message_data):
     print("Handling target user text")
-    response = "Target user said: " + text
-    print("Sending \"chat.postMessage\":" \
-            "\n  channel=\"" + channel + "\"" \
-            "\n  text=\"" + response + "\"" \
-            "\n  as_user=True")
-    if at_bot_id in text and text.split("<@" + at_bot_id + ">")[1].strip().lower().startswith(ADD_COMMAND):
-        print("about to handle_add_definition")
+    if at_bot_id in text:
+        handle_command(text, channel, message_data)
+    else:
+        print("target user said: " + text)
+
+def handle_command(text, channel, message_data):
+    print("in handle_command")
+    command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
+    if command.startswith(ADD_COMMAND):
         handle_add_definition(text, channel, message_data)
-        return
-    elif at_bot_id in text and text.split("<@" + at_bot_id + ">")[1].strip().lower().startswith(READ_COMMAND):
-        print("about to handle_read_definition")
+    elif command.startswith(READ_COMMAND):
         handle_read_definition(text, channel, message_data)
-        return
-    print("about to respond - unrecognized command: " + text)
-    print("at_bot_id: " + at_bot_id)
-    api.send_reply(text, channel)
+    else:
+        handle_unknown_command(channel)
+
+def handle_unknown_command(channel):
+    api.send_reply("Command not recognized", channel)
+            
 
 def listen_for_user(slack_rtm_output):
     """
