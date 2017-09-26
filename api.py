@@ -1,7 +1,9 @@
 import os
+import requests
 from slackclient import SlackClient
 
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
+dictionary_api_key = os.environ.get('DICTIONARY_API_KEY')
 
 def get_user_id(user_name):
     api_call = slack_client.api_call("users.list")
@@ -60,3 +62,28 @@ def get_name_from_id(id):
 def send_reply(text, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
                           text=text, as_user=True)
+
+def call_dictionary(word):
+    url = ('http://www.dictionaryapi.com/api/v1/references/collegiate/xml/%s?key=%s' %(word, dictionary_api_key))
+    print(url)
+    response = requests.get(url)
+    if response.ok:
+        return response
+    else:
+        print("Encountered error while trying to call dictionary API")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

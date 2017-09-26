@@ -3,14 +3,15 @@ import time
 import definition_model
 import dao
 import api
+import word_check
 from slackclient import SlackClient
 
 # constants
 BOT_NAME = "stokebot"
 TARGET_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
-ADD_COMMAND = "add"
-READ_COMMAND = "what is"
+ADD_COMMAND = ("add", "means", "is")
+READ_COMMAND = ("what is", "define")
 STATUS_COMMAND = "status"
 
 # globals
@@ -25,11 +26,26 @@ def handle_target_user_text(text, channel, message_data):
     if at_bot_id in text:
         handle_command(text, channel, message_data)
     else:
-        print("target user said: " + text)
+        check_target_user_text(text, channel, message_data)
 
+def check_target_user_text(text, channel, message_data):
+    print("Checking target user text")
+    words = word_check.sanitize_and_split_words(text)
+    unknown_words = word_check.find_unknown_words(words)
+    for word in unknown_words:
+        print("About to check_dictionary for \"" + word + "\"")
+        if not word_check.check_dictionary(word):
+            # definition was not found
+            response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
+            api.send_reply(response, channel)
+
+
+
+#Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
     print("in handle_command")
     command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
+    print("command: " + command)
     if command.startswith(ADD_COMMAND):
         handle_add_definition(text, channel, message_data)
     elif command.startswith(READ_COMMAND):
@@ -60,8 +76,8 @@ def listen_for_user(slack_rtm_output):
     return None, None, None
 
 def handle_read_definition(text, channel, message_data):
-    command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
-    word = command[0][len(READ_COMMAND):].strip()
+    command = text.split("<@" + at_bot_id + ">")[1].strip()
+    word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
     print("word: " + word)
     definitions = dao.read_definition(word)
     print(definitions)
