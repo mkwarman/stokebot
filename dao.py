@@ -15,7 +15,7 @@ def create_connection():
 
     try:
         print(db_file)
-        connection = sqlite3.connect(db_file)
+        connection = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES)
         return connection
     except Error as e:
         print(e)
@@ -31,8 +31,7 @@ def select_all_words():
 
     rows = cursor.fetchall()
 
-    cursor.close_cursor()
-    del cursor
+    cursor.closer()
     connection.close()
     return rows
 
@@ -42,16 +41,15 @@ def insert_definition(definition):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' INSERT INTO definitions(word, definition, date_added, time_added, added_by_user, added_in_channel) values(?, ?, date('now'), time('now'), ?, ?) '''
+    sql = ''' INSERT INTO definitions(word, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?) '''
     
-    data = (definition.word, definition.definition, definition.added_by_user, definition.added_in_channel)
+    data = (definition.word, definition.meaning, definition.user, definition.channel, definition.date_time_added)
     print(data)
     cursor.execute(sql, data)
     print(cursor)
     connection.commit()
 
     cursor.close()
-    del cursor
     connection.close()
 
 def read_definition(word):
@@ -73,12 +71,11 @@ def read_definition(word):
 
     for row in rows:
         print(row)
-        print(row[1] + row[2] + row[3] + row[4] + row[5] + row[6])
-        definition.from_database(row[1], row[2], row[3], row[4], row[5], row[6])
+        print(row[1] + row[2] + row[3] + row[4] + row[5])
+        definition.from_database(row[1], row[2], row[3], row[4], row[5])
         definitions.append(definition)
 
     cursor.close()
-    del cursor
     connection.close()
 
     return definitions

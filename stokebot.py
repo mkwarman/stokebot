@@ -66,8 +66,8 @@ def handle_add_definition(text, channel, message_data):
     command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
     word = command[0][len(ADD_COMMAND):].strip()
     print("word: " + word)
-    definition = command[1].strip()
-    print("definition: " + definition)
+    meaning = command[1].strip()
+    print("meaning: " + meaning)
 
     definition_object = definition_model.Definition()
     user_name = api.get_user_name(message_data['user'])
@@ -76,7 +76,7 @@ def handle_add_definition(text, channel, message_data):
     channel_name = api.get_name_from_id(message_data['channel'])
     print("channel_name: " + channel_name)
 
-    definition_object.new(word, definition, user_name, channel_name)
+    definition_object.new(word, meaning, user_name, channel_name)
 
     api.send_reply(str(definition_object), channel)
     print("attempting to insert into database")
