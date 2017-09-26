@@ -11,6 +11,7 @@ TARGET_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
 ADD_COMMAND = "add"
 READ_COMMAND = "what is"
+STATUS_COMMAND = "status"
 
 # globals
 global at_bot_id
@@ -33,12 +34,16 @@ def handle_command(text, channel, message_data):
         handle_add_definition(text, channel, message_data)
     elif command.startswith(READ_COMMAND):
         handle_read_definition(text, channel, message_data)
+    elif command.startswith(STATUS_COMMAND):
+        handle_status_inquiry(channel)
     else:
         handle_unknown_command(channel)
 
 def handle_unknown_command(channel):
     api.send_reply("Command not recognized", channel)
             
+def handle_status_inquiry(channel):
+    api.send_reply("I'm here!", channel)
 
 def listen_for_user(slack_rtm_output):
     """
@@ -85,7 +90,7 @@ def handle_add_definition(text, channel, message_data):
     dao.insert_definition(definition_object)
 
 if __name__ == "__main__":
-    READ_WEBSOCKET_DELAY = 1 # 1 second delay between reading from firehose
+    READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     if slack_client.rtm_connect():
         print("StokeBot connected and running!")
         global at_bot_id
@@ -96,7 +101,6 @@ if __name__ == "__main__":
         while True:
             text, channel, message_data = listen_for_user(slack_client.rtm_read())
             if text and channel:
-                # handle_command(command, channel)
                 handle_target_user_text(text, channel, message_data)
             time.sleep(READ_WEBSOCKET_DELAY)
     else:
