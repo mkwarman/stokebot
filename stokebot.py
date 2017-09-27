@@ -1,9 +1,11 @@
 import os
 import time
 import definition_model
+import blacklisted_model
 import dao
 import api
 import word_check
+import re
 from slackclient import SlackClient
 
 # constants
@@ -12,12 +14,14 @@ TARGET_USER_NAME = "mkwarman"
 ADMIN_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
 ADD_COMMAND = ("add")
+BLACKLIST_COMMAND = ("blacklist")
 SECONDARY_ADD_COMMAND = ("means", "is")
 READ_COMMAND = ("what is", "define")
 VERBOSE_COMMAND = ("verbose")
 STATUS_COMMAND = ("status")
-SHOW_ALL_COMMAND = ("show all", "show all definitions", "show all words")
+SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
 DELETE_COMMAND = ("delete")
+STOP_COMMAND = ("stop")
 
 # globals
 global at_bot_id
@@ -39,7 +43,7 @@ def check_target_user_text(text, channel, message_data):
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
-        if not word_check.check_dictionary(word):
+        if not word_check.check_dictionary(word) and len(dao.read_definition(word)) == 0:
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
@@ -63,6 +67,8 @@ def handle_command(text, channel, message_data):
         handle_verbose(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
+    elif command.startswith(BLACKLIST_COMMAND):
+        handle_blacklist(command, channel, message_data)
     else:
         handle_unknown_command(channel)
 
@@ -131,10 +137,11 @@ def handle_read_definition(command, channel, message_data):
 
     # Extract just the word from the command
     word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
-    print("word: " + word)
+    sanitized_word = re.sub("[^a-z -'’]", "", word)
+    print("sanitized_word: " + sanitized_word)
     
     # Read the definition from the database
-    definitions = dao.read_definition(word)
+    definitions = dao.read_definition(sanitized_word)
     print(definitions)
     
     # Reply definitions from the database
@@ -156,7 +163,8 @@ def handle_add_definition(command, channel, message_data):
     #command = text.split("<@" + at_bot_id + ">")[1].strip()
 
     # Extract just the word and the meaning from the command
-    word_and_meaning = command[len([command_text for command_text in ADD_COMMAND if command.startswith(command_text)][0]):].split(":")
+    #word_and_meaning = command[len([command_text for command_text in ADD_COMMAND if command.startswith(command_text)][0]):].split(":")
+    word_and_meaning = command[3:].split(":")
     word = word_and_meaning[0].strip()
     meaning = word_and_meaning[1].strip()
 
@@ -178,6 +186,63 @@ def add_definition(word, meaning, channel, message_data):
     
     # Send definition object to database
     dao.insert_definition(definition_object)
+
+def handle_blacklist(command, channel, message_data):
+    if api.is_admin(message_data['user']):
+        sub_command = command[10:]
+        print("sub_command: " + sub_command)
+        if sub_command.startswith("add"):
+            # add to blacklist
+            blacklist_add(sub_command[4:], channel, message_data)
+        elif sub_command.startswith("get"):
+            # read from blacklist
+            blacklist_read(sub_command[4:], channel, message_data)
+        elif sub_command.startswith("delete"):
+            # delete from blacklist
+            blacklist_delete(sub_command[7:], channel, message_data)
+        elif sub_command.startswith("showall"):
+            # show full blacklist
+            blacklist_showall(channel)
+        else:
+            api.send_reply("Try \"backlist add\", \"backlist get\", \"backlist delete\", or \"blacklist showall\"", channel)
+    
+    else:
+        api.send_reply("Sorry <@" +message_data['user'] + ">, only admins can edit the blacklist.", channel)
+
+def blacklist_add(word, channel, message_data):
+    print("in blacklist_add, word: " + word)
+    # Instantiate blacklist object
+    blacklisted_object = blacklisted_model.Blacklisted()
+
+    user_name = api.get_user_name(message_data['user'])
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    blacklisted_object.new(word, user_name, channel_name)
+
+    dao.insert_blacklisted(blacklisted_object)
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
+
+def blacklist_read(word, channel, message_data):
+    blacklisted = dao.get_blacklisted_by_word(word)
+
+    print(blacklisted)
+    api.send_reply(str(blacklisted), channel)
+
+def blacklist_delete(blacklisted_id, channel, message_data):
+    blacklisted = dao.get_blacklisted_by_id(blacklisted_id)
+    if not blacklisted:
+        api.send_reply("ID " + blacklisted_id + " does not exist.", channel) 
+        return
+    dao.delete_blacklisted_by_id(blacklisted_id)
+
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)   
+
+def blacklist_showall(channel):
+    blacklist = dao.select_all_blacklisted()
+
+    for blacklisted in blacklist:
+        print(str(blacklisted))
+        api.send_reply(str(blacklisted), channel)
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
