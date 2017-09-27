@@ -41,7 +41,7 @@ def find_unknown_words(words):
 def check_dictionary(word):
     """ Returns true if word found or false if not """
     response = api.call_dictionary(word)
-    match_string = '<entry id=\"%s\"' %word
+    match_string = '<entry id=\"%s' %word
     print(response.text)
     print("match_string: " + match_string)
     if match_string in response.text:
