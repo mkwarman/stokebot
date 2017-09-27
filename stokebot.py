@@ -55,7 +55,7 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
-    elif command.split(" ")[1] in SECONDARY_ADD_COMMAND:
+    elif len(command.split(" ")) > 2 and command.split(" ")[1] in SECONDARY_ADD_COMMAND:
         handle_secondary_add_definition(command, channel, message_data)
     elif command in SHOW_ALL_COMMAND:
         handle_show_all(channel)
