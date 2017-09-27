@@ -11,7 +11,6 @@ from slackclient import SlackClient
 # constants
 BOT_NAME = "stokebot"
 TARGET_USER_NAME = "mkwarman"
-ADMIN_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -30,12 +29,16 @@ global at_target_user_id
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
-def handle_target_user_text(text, channel, message_data):
-    print("Handling target user text")
-    if at_bot_id in text:
-        handle_command(text, channel, message_data)
-    else:
+def handle_text(text, channel, message_data):
+    print("Handling text")
+    if text.startswith("<@" + at_bot_id + ">"):
+        print("Received command: " + text)
+        return handle_command(text, channel, message_data)
+    elif 'user' in message_data and at_target_user_id in message_data['user']:
+        print("Target user said: " + text)
         check_target_user_text(text, channel, message_data)
+
+    return True
 
 def check_target_user_text(text, channel, message_data):
     print("Checking target user text")
@@ -50,10 +53,12 @@ def check_target_user_text(text, channel, message_data):
 
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
-    print("in handle_command")
+    print("In handle_command")
     command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
-    print("command: " + command)
-    if command.startswith(ADD_COMMAND):
+    print("Parsed command: " + command)
+    if command == STOP_COMMAND:
+        return False
+    elif command.startswith(ADD_COMMAND):
         handle_add_definition(command, channel, message_data)
     elif command.startswith(READ_COMMAND):
         handle_read_definition(command, channel, message_data)
@@ -71,6 +76,8 @@ def handle_command(text, channel, message_data):
         handle_blacklist(command, channel, message_data)
     else:
         handle_unknown_command(channel)
+
+    return True
 
 def handle_unknown_command(channel):
     api.send_reply("Command not recognized", channel)
@@ -117,7 +124,7 @@ def handle_show_all(channel):
         print(definition)
         api.send_reply((definition.word + " means " + definition.meaning), channel)
 
-def listen_for_user(slack_rtm_output):
+def listen_for_text(slack_rtm_output):
     """
     	Listen for messages sent by certian users. If the message was
     	sent by one of those users, then do more.
@@ -125,8 +132,8 @@ def listen_for_user(slack_rtm_output):
     output_list = slack_rtm_output
     if output_list and len(output_list) > 0:
         for output in output_list:
-            if output and 'text' in output and 'user' in output and at_target_user_id in output['user']:
-                print("Target user said: " + output['text'])
+            #if output and 'text' in output and 'user' in output and at_target_user_id in output['user']:
+            if output and 'text' in output:
                 return output['text'], output['channel'], output
                 # return None, None
     return None, None, None
@@ -253,10 +260,11 @@ if __name__ == "__main__":
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
 
-        while True:
-            text, channel, message_data = listen_for_user(slack_client.rtm_read())
+        run = True
+        while run:
+            text, channel, message_data = listen_for_text(slack_client.rtm_read())
             if text and channel:
-                handle_target_user_text(text, channel, message_data)
+                run = handle_text(text, channel, message_data)
             time.sleep(READ_WEBSOCKET_DELAY)
     else:
         print("Connection failed. Invalid Slack token or Bot ID?")

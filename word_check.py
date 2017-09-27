@@ -34,14 +34,14 @@ def sanitize_and_split_words(text):
 def find_unknown_words(words):
     print("Finding unknown words in: ", words)
     known_words = known(words)
-    unknown_words = [word for word in words if word not in known_words]
+    unknown_words = [word for word in words if len(word) > 3 and word not in known_words]
     print("Unknown words: ", unknown_words)
     return unknown_words
 
 def check_dictionary(word):
     """ Returns true if word found or false if not """
     response = api.call_dictionary(word)
-    match_string = '<entry id=\"%s' %word
+    match_string = '<def>'
     print(response.text)
     print("match_string: " + match_string)
     if match_string in response.text:
