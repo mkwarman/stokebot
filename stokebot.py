@@ -10,7 +10,8 @@ from slackclient import SlackClient
 
 # constants
 BOT_NAME = "stokebot"
-TARGET_USER_NAME = "mkwarman"
+BOT_OWNER_NAME = "mkwarman"
+TARGET_USER_NAME = "austoke"
 EXAMPLE_COMMAND = "do"
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -21,6 +22,8 @@ STATUS_COMMAND = ("status")
 SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
 DELETE_COMMAND = ("delete")
 STOP_COMMAND = ("stop")
+SAY_COMMAND = ("say")
+HELP_COMMAND = ("help")
 
 # globals
 global at_bot_id
@@ -72,15 +75,67 @@ def handle_command(text, channel, message_data):
         handle_verbose(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
+    elif command.startswith(SAY_COMMAND):
+        handle_say(text, channel, message_data)
     elif command.startswith(BLACKLIST_COMMAND):
         handle_blacklist(command, channel, message_data)
+    elif command == HELP_COMMAND:
+        handle_help(channel)
     else:
         handle_unknown_command(channel)
 
     return True
 
+def handle_help(channel):
+    response = "Basic Commands:\n" \
+               + ">`@stokebot add [word]: [meaning]` --- Use this command to add a definition to the database\n" \
+               + ">`@stokebot [word] (means/is) [meaning]` --- Same as \"add\"\n" \
+               + ">`@stokebot (define/what is) [word]` --- Use this command to look up a word in the database\n" \
+               + ">`@stokebot stop` --- Use this command if I get too annoying or messed up. I will have to be manually " \
+               + "restarted afterward, but that's ok... I'm not programmed to have feelings, after all...:slightly_frowning_face:\n" \
+               + "\nThere are a few other more advanced administration commands, but since this bot is " \
+               + "still in development they are outside of the scope of this help message. " \
+               + "Feel free to pester <@" + api.get_user_id(BOT_OWNER_NAME) + "> with questions!"
+
+    api.send_reply(response, channel)
+
+def handle_say(text, channel, message_data):
+    print("In handle_say")
+    raw_phrase = text.split("<@" + at_bot_id + ">")[1].strip()[4:]
+    # Extract just the phrase from the command
+    #phrase = command[len([command_text for command_text in SAY_COMMAND if command.startswith(command_text)][0]):].strip()
+    phrase_data = raw_phrase.lower().split(" ")
+    print("phrase_data: ", phrase_data)
+
+    at_user = "<@" + message_data['user'] + ">" 
+
+    replacements = {"you" : "I",
+                    "you're": "I am",
+                    "you’re": "I am",
+                    "your": "My",
+                    "my": at_user + "'s",
+                    "i" : at_user}
+
+    replacements2 = {"are" : "am",
+                     "am": "is"}
+
+    if phrase_data[0] and phrase_data[0] in replacements:
+        replacement_word = replacements[phrase_data[0]]
+        print("Replacing \"" + phrase_data[0] + "\" with \"" + replacement_word + "\"")
+        phrase_data[0] = replacement_word
+        if phrase_data[1] and phrase_data[1] in replacements2:
+            replacement2_word = replacements2[phrase_data[1]]
+            print("Replacing \"" + phrase_data[1] + "\" with \"" + replacement2_word + "\"")
+            phrase_data[1] = replacement2_word
+        
+        response = " ".join(phrase_data)
+    else:
+        response = raw_phrase
+
+    api.send_reply(response, channel)
+
 def handle_unknown_command(channel):
-    api.send_reply("Command not recognized", channel)
+    api.send_reply("Command not recognized. Try `@stokebot help`", channel)
             
 def handle_delete(command, channel, message_data):
     # Extract just the word from the command
@@ -133,7 +188,8 @@ def listen_for_text(slack_rtm_output):
     if output_list and len(output_list) > 0:
         for output in output_list:
             #if output and 'text' in output and 'user' in output and at_target_user_id in output['user']:
-            if output and 'text' in output:
+            # If there is text present, but that text isnt from this bot,
+            if output and 'text' in output and 'user' in output and output['user'] != at_bot_id:
                 return output['text'], output['channel'], output
                 # return None, None
     return None, None, None
@@ -265,6 +321,8 @@ if __name__ == "__main__":
             text, channel, message_data = listen_for_text(slack_client.rtm_read())
             if text and channel:
                 run = handle_text(text, channel, message_data)
+                if not run:
+                    api.send_reply(":broken_heart:", channel)
             time.sleep(READ_WEBSOCKET_DELAY)
     else:
         print("Connection failed. Invalid Slack token or Bot ID?")
