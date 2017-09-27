@@ -5,6 +5,15 @@ from slackclient import SlackClient
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 dictionary_api_key = os.environ.get('DICTIONARY_API_KEY')
 
+def is_admin(user_id):
+    api_call = slack_client.api_call("users.list")
+    if api_call.get('ok'):
+        users = api_call.get('members')
+        for user in users:
+            if 'id' in user and user.get('id') == user_id:
+                print("Got target user profile for '" + user['id'] + "': " + str(user))
+                return user.get('is_admin')
+
 def get_user_id(user_name):
     api_call = slack_client.api_call("users.list")
     if api_call.get('ok'):

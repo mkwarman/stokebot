@@ -9,10 +9,15 @@ from slackclient import SlackClient
 # constants
 BOT_NAME = "stokebot"
 TARGET_USER_NAME = "mkwarman"
+ADMIN_USER_NAME = "mkwarman"
 EXAMPLE_COMMAND = "do"
-ADD_COMMAND = ("add", "means", "is")
+ADD_COMMAND = ("add")
+SECONDARY_ADD_COMMAND = ("means", "is")
 READ_COMMAND = ("what is", "define")
-STATUS_COMMAND = "status"
+VERBOSE_COMMAND = ("verbose")
+STATUS_COMMAND = ("status")
+SHOW_ALL_COMMAND = ("show all", "show all definitions", "show all words")
+DELETE_COMMAND = ("delete")
 
 # globals
 global at_bot_id
@@ -39,27 +44,72 @@ def check_target_user_text(text, channel, message_data):
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
 
-
-
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
     print("in handle_command")
     command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
     print("command: " + command)
     if command.startswith(ADD_COMMAND):
-        handle_add_definition(text, channel, message_data)
+        handle_add_definition(command, channel, message_data)
     elif command.startswith(READ_COMMAND):
-        handle_read_definition(text, channel, message_data)
+        handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
+    elif command.split(" ")[1] in SECONDARY_ADD_COMMAND:
+        handle_secondary_add_definition(command, channel, message_data)
+    elif command in SHOW_ALL_COMMAND:
+        handle_show_all(channel)
+    elif command.startswith(VERBOSE_COMMAND):
+        handle_verbose(command, channel)
+    elif command.startswith(DELETE_COMMAND):
+        handle_delete(command, channel, message_data)
     else:
         handle_unknown_command(channel)
 
 def handle_unknown_command(channel):
     api.send_reply("Command not recognized", channel)
             
+def handle_delete(command, channel, message_data):
+    # Extract just the word from the command
+    #word_id = command[len([command_text for command_text in DELETE_COMMAND if command.startswith(command_text)][0]):].strip()
+    word_id = command[7:]
+
+    if api.is_admin(message_data['user']):
+        definition = dao.get_by_id(word_id)
+        if not definition:
+            api.send_reply("ID " + word_id + " does not exist.", channel)
+            return
+        dao.delete_by_id(word_id)
+        response = "Ok <@" +message_data['user'] + ">, I deleted ID " + word_id + ": \"" + definition.word + "\"."
+    else:
+        response = "Sorry <@" +message_data['user'] + ">, only admins can delete words."
+
+    api.send_reply(response, channel)
+
 def handle_status_inquiry(channel):
     api.send_reply("I'm here!", channel)
+
+def handle_verbose(command, channel):
+    # Extract just the word from the command
+    #word = command[len([command_text for command_text in VERBOSE_COMMAND if command.startswith(command_text)][0]):].strip()
+    word = command[8:]
+
+    # Read the definition from the database
+    definitions = dao.read_definition(word)
+
+    # Reply definitions from the database
+    for definition in definitions:
+        print(definition)
+        api.send_reply(str(definition), channel)
+
+
+def handle_show_all(channel):
+    definitions = dao.select_all()
+    
+    # Reply definitions from the database
+    for definition in definitions:
+        print(definition)
+        api.send_reply((definition.word + " means " + definition.meaning), channel)
 
 def listen_for_user(slack_rtm_output):
     """
@@ -75,34 +125,58 @@ def listen_for_user(slack_rtm_output):
                 # return None, None
     return None, None, None
 
-def handle_read_definition(text, channel, message_data):
-    command = text.split("<@" + at_bot_id + ">")[1].strip()
+def handle_read_definition(command, channel, message_data):
+    # Extract just the relevent section from the text
+    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+
+    # Extract just the word from the command
     word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
     print("word: " + word)
+    
+    # Read the definition from the database
     definitions = dao.read_definition(word)
     print(definitions)
+    
+    # Reply definitions from the database
     for definition in definitions:
         print(definition)
         api.send_reply((definition.word + " means " + definition.meaning), channel)
 
-def handle_add_definition(text, channel, message_data):
-    command = text.split("<@" + at_bot_id + ">")[1].strip().split(":")
-    word = command[0][len(ADD_COMMAND):].strip()
-    print("word: " + word)
-    meaning = command[1].strip()
-    print("meaning: " + meaning)
+def handle_secondary_add_definition(command, channel, message_data):
+    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    command_data = command.split(" ")
 
+    word = command_data[0]
+    meaning = " ".join(command_data[2:])
+
+    add_definition(word, meaning, channel, message_data)
+
+def handle_add_definition(command, channel, message_data):
+    # Extract just the relevent section from the text
+    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+
+    # Extract just the word and the meaning from the command
+    word_and_meaning = command[len([command_text for command_text in ADD_COMMAND if command.startswith(command_text)][0]):].split(":")
+    word = word_and_meaning[0].strip()
+    meaning = word_and_meaning[1].strip()
+
+    add_definition(word, meaning, channel, message_data)
+
+def add_definition(word, meaning, channel, message_data):
+    # Instantiate definition object
     definition_object = definition_model.Definition()
+    
+    # Get friendly names of user and channel 
     user_name = api.get_user_name(message_data['user'])
-    print("user_name: " + user_name)
-    print(message_data)
     channel_name = api.get_name_from_id(message_data['channel'])
-    print("channel_name: " + channel_name)
 
+    # Populate definition object
     definition_object.new(word, meaning, user_name, channel_name)
 
-    api.send_reply(str(definition_object), channel)
-    print("attempting to insert into database")
+    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " means " + meaning, channel)
+    print("attempting to insert into database: " + str(definition_object))
+    
+    # Send definition object to database
     dao.insert_definition(definition_object)
 
 if __name__ == "__main__":

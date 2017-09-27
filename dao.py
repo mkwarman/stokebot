@@ -22,7 +22,43 @@ def create_connection():
 
     return None
 
-def select_all_words():
+def get_by_id(unique_id):
+    """ return word associated with input unique_id """
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT * FROM definitions WHERE id=? '''
+
+    data = (unique_id,)
+    cursor.execute(sql, data)
+
+    row = cursor.fetchone()
+
+    if row:
+        definition = definition_model.Definition()
+        print(row)
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
+    
+        return definition
+    else:
+        return None
+
+def delete_by_id(unique_id):
+    """ delete definition row based on input unique id """
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM definitions WHERE id=? '''
+
+    data = (unique_id,)
+    cursor.execute(sql, data)
+
+    print(cursor)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def select_all():
     """ return all words defined in the database """
 
     connection = create_connection()
@@ -31,10 +67,19 @@ def select_all_words():
 
     rows = cursor.fetchall()
 
-    cursor.closer()
-    connection.close()
-    return rows
+    definitions = []
 
+    for row in rows:
+        definition = definition_model.Definition()
+        print(row)
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])                                            
+        definitions.append(definition)
+
+    cursor.close()
+    connection.close()
+    
+    return definitions
 
 def insert_definition(definition):
     """ insert definition in the database """
@@ -67,12 +112,12 @@ def read_definition(word):
     rows = cursor.fetchall()
 
     definitions = []
-    definition = definition_model.Definition()
 
     for row in rows:
+        definition = definition_model.Definition()
         print(row)
-        print(row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[1], row[2], row[3], row[4], row[5])
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
         definitions.append(definition)
 
     cursor.close()
