@@ -49,7 +49,7 @@ def check_target_user_text(text, channel, message_data):
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
-        if not word_check.check_dictionary(word) and len(dao.read_definition(word)) == 0:
+        if not word_check.check_dictionary(word) and not dao.read_definition(word) and not dao.get_blacklisted_by_word(word):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
@@ -164,6 +164,11 @@ def handle_verbose(command, channel):
 
     # Read the definition from the database
     definitions = dao.read_definition(word)
+    
+    # If no definitions present
+    if not definitions:
+        api.send_reply("No definitions present for \"" + word + "\"", channel)
+        return
 
     # Reply definitions from the database
     for definition in definitions:
@@ -207,6 +212,11 @@ def handle_read_definition(command, channel, message_data):
     definitions = dao.read_definition(sanitized_word)
     print(definitions)
     
+    # If no definitions present
+    if not definitions:
+        api.send_reply("No definitions present for \"" + sanitized_word + "\"", channel)
+        return
+
     # Reply definitions from the database
     for definition in definitions:
         print(definition)

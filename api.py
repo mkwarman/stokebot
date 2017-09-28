@@ -59,14 +59,18 @@ def get_group_name(group_id):
             return group.get('name')
 
 def get_name_from_id(id):
+    print("get_name_from_id: " + id)
     if id.startswith("U"):
         return get_user_name(id)
     elif id.startswith("C"):
         return get_channel_name(id)
     elif id.startswith("G"):
         return get_group_name(id)
+    elif id.startswith("D"):
+        return "direct message"
     else:
         print("get_name_from_id encountered unhandled ID")
+        return "unknown"
 
 def send_reply(text, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
@@ -80,19 +84,4 @@ def call_dictionary(word):
         return response
     else:
         print("Encountered error while trying to call dictionary API")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
