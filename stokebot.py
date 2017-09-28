@@ -28,6 +28,7 @@ HELP_COMMAND = ("help")
 # globals
 global at_bot_id
 global at_target_user_id
+global defined_words
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -46,10 +47,18 @@ def handle_text(text, channel, message_data):
 def check_target_user_text(text, channel, message_data):
     print("Checking target user text")
     words = word_check.sanitize_and_split_words(text)
+
+    for word in words:
+        if word in defined_words:
+            print("found \"" + word + "\" in defined_words")
+            definitions = dao.read_definition(word)
+            reply_definitions(definitions, channel)
+            words.remove(word)
+
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
-        if not word_check.check_dictionary(word) and not dao.read_definition(word) and not dao.get_blacklisted_by_word(word):
+        if not word_check.check_dictionary(word) and not dao.get_blacklisted_by_word(word):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
@@ -147,6 +156,7 @@ def handle_delete(command, channel, message_data):
         if not definition:
             api.send_reply("ID " + word_id + " does not exist.", channel)
             return
+        defined_words.remove(definition.word)
         dao.delete_by_id(word_id)
         response = "Ok <@" +message_data['user'] + ">, I deleted ID " + word_id + ": \"" + definition.word + "\"."
     else:
@@ -180,9 +190,7 @@ def handle_show_all(channel):
     definitions = dao.select_all()
     
     # Reply definitions from the database
-    for definition in definitions:
-        print(definition)
-        api.send_reply((definition.word + " means " + definition.meaning), channel)
+    reply_definitions(definitions, channel)
 
 def listen_for_text(slack_rtm_output):
     """
@@ -218,10 +226,8 @@ def handle_read_definition(command, channel, message_data):
         return
 
     # Reply definitions from the database
-    for definition in definitions:
-        print(definition)
-        api.send_reply((definition.word + " means " + definition.meaning), channel)
-
+    reply_definitions(definitions, channel)
+    
 def handle_secondary_add_definition(command, channel, message_data):
     #command = text.split("<@" + at_bot_id + ">")[1].strip()
     command_data = command.split(" ")
@@ -252,6 +258,7 @@ def add_definition(word, meaning, channel, message_data):
     channel_name = api.get_name_from_id(message_data['channel'])
 
     # Populate definition object
+    defined_words.append(word)
     definition_object.new(word, meaning, user_name, channel_name)
 
     api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " means " + meaning, channel)
@@ -317,14 +324,22 @@ def blacklist_showall(channel):
         print(str(blacklisted))
         api.send_reply(str(blacklisted), channel)
 
+def reply_definitions(definitions, channel):
+    for definition in definitions:
+        print("sending " + str(definition) + " to " + channel)
+        api.send_reply((definition.word + " means " + definition.meaning), channel)
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     if slack_client.rtm_connect():
         print("StokeBot connected and running!")
         global at_bot_id
         global at_target_user_id
+        global defined_words
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
+        defined_words = dao.get_defined_words()
+        print("Got all defined words: " + str(defined_words))
 
         run = True
         while run:

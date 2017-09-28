@@ -217,5 +217,22 @@ def read_definition(word):
 
     return definitions
 
+def get_defined_words():
+    """ read all currently defined words in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT word FROM definitions '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+    
+    definitions = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return definitions
 
 
