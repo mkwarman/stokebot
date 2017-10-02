@@ -29,6 +29,7 @@ HELP_COMMAND = ("help")
 global at_bot_id
 global at_target_user_id
 global defined_words
+global blacklisted_words
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -54,11 +55,14 @@ def check_target_user_text(text, channel, message_data):
             definitions = dao.read_definition(word)
             reply_definitions(definitions, channel)
             words.remove(word)
+        elif word in blacklisted_words:
+            print("found \"" + word + "\" in blacklisted_words")
+            words.remove(word)
 
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
-        if not word_check.check_dictionary(word) and not dao.get_blacklisted_by_word(word):
+        if not word_check.check_dictionary(word):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
@@ -291,6 +295,7 @@ def handle_blacklist(command, channel, message_data):
 
 def blacklist_add(word, channel, message_data):
     print("in blacklist_add, word: " + word)
+
     # Instantiate blacklist object
     blacklisted_object = blacklisted_model.Blacklisted()
 
@@ -300,6 +305,7 @@ def blacklist_add(word, channel, message_data):
     blacklisted_object.new(word, user_name, channel_name)
 
     dao.insert_blacklisted(blacklisted_object)
+    blacklisted_words.append(word)
     api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
 
 def blacklist_read(word, channel, message_data):
@@ -314,6 +320,7 @@ def blacklist_delete(blacklisted_id, channel, message_data):
         api.send_reply("ID " + blacklisted_id + " does not exist.", channel) 
         return
     dao.delete_blacklisted_by_id(blacklisted_id)
+    blacklisted_words.remove(blacklisted.word)
 
     api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)   
 
@@ -327,7 +334,7 @@ def blacklist_showall(channel):
 def reply_definitions(definitions, channel):
     for definition in definitions:
         print("sending " + str(definition) + " to " + channel)
-        api.send_reply((definition.word + " means " + definition.meaning), channel)
+        api.send_reply(("*" + definition.word + "* means _" + definition.meaning + "_"), channel)
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
@@ -336,10 +343,13 @@ if __name__ == "__main__":
         global at_bot_id
         global at_target_user_id
         global defined_words
+        global blacklisted_words
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
         defined_words = dao.get_defined_words()
+        blacklisted_words = dao.get_blacklisted_words()
         print("Got all defined words: " + str(defined_words))
+        print("Got all blacklisted words: " + str(blacklisted_words))
 
         run = True
         while run:

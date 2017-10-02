@@ -235,4 +235,22 @@ def get_defined_words():
 
     return definitions
 
+def get_blacklisted_words():
+    """ read all currently blacklisted words in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT word FROM blacklist '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    blacklisted_words = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return blacklisted_words
+
 
