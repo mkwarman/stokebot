@@ -24,7 +24,7 @@ def edits(word):
 
 def sanitize_and_split_words(text):
     print("About sanitize and split \"" + text + "\"")
-    text_sans_tags = re.sub("(<(@|#)[a-z0-9|]+>)", "", text.lower())
+    text_sans_tags = re.sub("(<(((@|#)[^ ]+)|((https?):\/\/[^>]+))>)", "", text.lower())
     text_sans_emoji = re.sub(":[^: ]+:|([0-9]{1,2}(:[0-9]{1,2})?(am|pm))", " ", text_sans_tags)
     text_sans_symbols = re.sub("[^a-z'-]+", " ", text_sans_emoji)
     text_sans_combined_words = re.sub("[a-z]*[_\-']+[a-z]*", " ", text_sans_symbols)
