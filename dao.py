@@ -254,3 +254,68 @@ def get_blacklisted_words():
     return blacklisted_words
 
 
+def insert_ignored_user(user):
+    """ insert ignored user into ignore table """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' INSERT INTO ignore(user_id, user_name, channel, date_time_added) values(?, ?, ?, ?) '''
+
+    data = (user.user_id, user.user_name, user.channel, user.date_time_added)
+    print(user)
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_ignored_user_ids():
+    """ return a list of all ignored user ids """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT user_id FROM ignore '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    ignored = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return ignored
+
+def delete_ignored_by_user_id(user_id):
+    """ delete ignored user by user_id """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM ignore WHERE user_id=? '''
+
+    data = (user_id, )
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def increment_word_usage_count(word, times_used):
+    """ update times used in word_usage """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql_insert = ''' INSERT OR IGNORE INTO word_usage(word, times_used) VALUES(?, 0) '''
+    sql_update = ''' UPDATE word_usage SET times_used=times_used+? WHERE word LIKE ?; '''
+
+    data_insert = (word, )
+    data_update = (times_used, word)
+
+    cursor.execute(sql_insert, data_insert)
+    cursor.execute(sql_update, data_update)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+

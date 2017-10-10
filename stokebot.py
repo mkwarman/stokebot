@@ -2,6 +2,7 @@ import os
 import time
 import definition_model
 import blacklisted_model
+import user_model
 import dao
 import api
 import word_check
@@ -13,6 +14,7 @@ BOT_NAME = "stokebot"
 BOT_OWNER_NAME = "mkwarman"
 TARGET_USER_NAME = "austoke"
 EXAMPLE_COMMAND = "do"
+
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
 SECONDARY_ADD_COMMAND = ("means", "is")
@@ -24,41 +26,52 @@ DELETE_COMMAND = ("delete")
 STOP_COMMAND = ("stop")
 SAY_COMMAND = ("say")
 HELP_COMMAND = ("help")
+IGNORE_COMMAND = ("ignore")
+LISTEN_COMMAND = ("listen to")
 
 # globals
 global at_bot_id
 global at_target_user_id
 global defined_words
 global blacklisted_words
+global ignored_users
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
+    print("User: " + message_data['user'])
     if text.startswith("<@" + at_bot_id + ">"):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
-    elif 'user' in message_data and at_target_user_id in message_data['user']:
-        print("Target user said: " + text)
-        check_target_user_text(text, channel, message_data)
+    elif 'user' in message_data and message_data['user'] not in ignored_users:    
+        check_user_text(text, channel, message_data)
 
     return True
 
-def check_target_user_text(text, channel, message_data):
-    print("Checking target user text")
+def check_user_text(text, channel, message_data):
+    print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
+    unique_words = set(words)
+    
 
-    for word in words:
+    for word in list(unique_words):
         if word in defined_words:
             print("found \"" + word + "\" in defined_words")
             definitions = dao.read_definition(word)
+            dao.increment_word_usage_count(word, words.count(word))
             reply_definitions(definitions, channel)
-            words.remove(word)
+            unique_words.remove(word)
         elif word in blacklisted_words:
             print("found \"" + word + "\" in blacklisted_words")
-            words.remove(word)
+            unique_words.remove(word)
 
+    if 'user' in message_data and at_target_user_id in message_data['user']:
+        print("Target user said: " + text)
+        handle_target_user_text(unique_words, channel, message_data)
+
+def handle_target_user_text(words, channel, message_data):
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
@@ -66,6 +79,14 @@ def check_target_user_text(text, channel, message_data):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
+        else:
+            # Insert dictionary word into the blacklist so we dont keep useing database queries
+            blacklisted_object = blacklisted_model.Blacklisted()
+            channel_name = api.get_name_from_id(message_data['channel'])
+            user_name = "[dictionary_api]"
+            blacklisted_object.new(word, user_name, channel_name)
+            dao.insert_blacklisted(blacklisted_object)
+            blacklisted_words.append(word)
 
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
@@ -88,6 +109,10 @@ def handle_command(text, channel, message_data):
         handle_verbose(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
+    elif command.startswith(IGNORE_COMMAND):
+        handle_ignore(command, channel, message_data)
+    elif command.startswith(LISTEN_COMMAND):
+        handle_listen(command, channel, message_data)
     elif command.startswith(SAY_COMMAND):
         handle_say(text, channel, message_data)
     elif command.startswith(BLACKLIST_COMMAND):
@@ -104,6 +129,10 @@ def handle_help(channel):
                + ">`@stokebot add [word]: [meaning]` --- Use this command to add a definition to the database\n" \
                + ">`@stokebot [word] (means/is) [meaning]` --- Same as \"add\"\n" \
                + ">`@stokebot (define/what is) [word]` --- Use this command to look up a word in the database\n" \
+               + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
+               + "listen to commands\n" \
+               + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
+               + "asking him to \"ignore\" it previously\n" \
                + ">`@stokebot stop` --- Use this command if I get too annoying or messed up. I will have to be manually " \
                + "restarted afterward, but that's ok... I'm not programmed to have feelings, after all...:slightly_frowning_face:\n" \
                + "\nThere are a few other more advanced administration commands, but since this bot is " \
@@ -191,10 +220,12 @@ def handle_verbose(command, channel):
 
 
 def handle_show_all(channel):
-    definitions = dao.select_all()
+    #definitions = dao.select_all()
     
     # Reply definitions from the database
-    reply_definitions(definitions, channel)
+    #reply_definitions(definitions, channel)
+
+    api.send_reply("Disabled until a better way of displaying all definitions is implemented (there's too dang many, people!)", channel)
 
 def listen_for_text(slack_rtm_output):
     """
@@ -336,6 +367,69 @@ def reply_definitions(definitions, channel):
         print("sending " + str(definition) + " to " + channel)
         api.send_reply(("*" + definition.word + "* means _" + definition.meaning + "_"), channel)
 
+def handle_ignore(command, channel, message_data):
+    user_name = command[7:]
+    user_id = ""
+    
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+    
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    if not (user_id and user_name):
+        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[7:] + "\"", channel)
+        return
+
+    user_object = user_model.User()
+    user_object.new(user_id, user_name, channel_name)
+    
+    reply = ("Ok <@" + message_data['user'] + ">, I will ignore " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">") + " (except commands)")
+
+    if user_id not in ignored_users:
+        dao.insert_ignored_user(user_object)
+        ignored_users.append(user_id)
+    else:
+        print("user already in ignored_users, ignoring...")
+
+    api.send_reply(reply, channel)
+
+    print("new ignored_users: " + str(ignored_users))
+
+def handle_listen(command, channel, message_data):
+    user_name = command[10:]
+    user_id = ""
+
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+
+    if not (user_id and user_name):
+        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[10:] + "\"", channel)
+        return
+
+    reply = ("Ok <@" + message_data['user'] + ">, I will listen to " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">"))
+
+    if user_id in ignored_users:
+        dao.delete_ignored_by_user_id(user_id)
+        ignored_users.remove(user_id)
+    else:
+        print("user not in ignored_users, ignoring...")
+
+    api.send_reply(reply, channel)
+
+    print("new ignored_users: " + str(ignored_users))
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     if slack_client.rtm_connect():
@@ -344,12 +438,15 @@ if __name__ == "__main__":
         global at_target_user_id
         global defined_words
         global blacklisted_words
+        global ignored_users
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
         defined_words = dao.get_defined_words()
         blacklisted_words = dao.get_blacklisted_words()
+        ignored_users = dao.get_ignored_user_ids()
         print("Got all defined words: " + str(defined_words))
         print("Got all blacklisted words: " + str(blacklisted_words))
+        print("Got all blacklisted users: " + str(ignored_users))
 
         run = True
         while run:

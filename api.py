@@ -39,10 +39,8 @@ def get_user_name(user_id):
 def get_channel_name(channel_id):
     print("channel_id: " + channel_id)
     api_call = slack_client.api_call("channels.info", channel=channel_id)
-    print(api_call)
     if api_call.get('ok'):
         channel = api_call.get('channel')
-        print(channel)
         if 'id' in channel and channel.get('id') == channel_id:
             print("Got target channel name for '" + channel['id'] + "': " + channel.get('name'))
             return channel.get('name')
@@ -50,10 +48,8 @@ def get_channel_name(channel_id):
 def get_group_name(group_id):
     print("group_id: " + group_id)
     api_call = slack_client.api_call("groups.info", channel=group_id)
-    print(api_call)
     if api_call.get('ok'):
         group = api_call.get('group')
-        print(group)
         if 'id' in group and group.get('id') == group_id:
             print("Got target group name for '" + group['id'] + "': " + group.get('name'))
             return group.get('name')
