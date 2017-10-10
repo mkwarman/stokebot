@@ -301,5 +301,21 @@ def delete_ignored_by_user_id(user_id):
     cursor.close()
     connection.close()
 
+def increment_word_usage_count(word, times_used):
+    """ update times used in word_usage """
 
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql_insert = ''' INSERT OR IGNORE INTO word_usage(word, times_used) VALUES(?, 0) '''
+    sql_update = ''' UPDATE word_usage SET times_used=times_used+? WHERE word LIKE ?; '''
+
+    data_insert = (word, )
+    data_update = (times_used, word)
+
+    cursor.execute(sql_insert, data_insert)
+    cursor.execute(sql_update, data_update)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
 

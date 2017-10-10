@@ -53,20 +53,23 @@ def handle_text(text, channel, message_data):
 def check_user_text(text, channel, message_data):
     print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
+    unique_words = set(words)
+    
 
-    for word in words:
+    for word in list(unique_words):
         if word in defined_words:
             print("found \"" + word + "\" in defined_words")
             definitions = dao.read_definition(word)
+            dao.increment_word_usage_count(word, words.count(word))
             reply_definitions(definitions, channel)
-            words.remove(word)
+            unique_words.remove(word)
         elif word in blacklisted_words:
             print("found \"" + word + "\" in blacklisted_words")
-            words.remove(word)
+            unique_words.remove(word)
 
     if 'user' in message_data and at_target_user_id in message_data['user']:
         print("Target user said: " + text)
-        handle_target_user_text(words, channel, message_data)
+        handle_target_user_text(unique_words, channel, message_data)
 
 def handle_target_user_text(words, channel, message_data):
     unknown_words = word_check.find_unknown_words(words)
