@@ -2,6 +2,7 @@ import os
 import time
 import definition_model
 import blacklisted_model
+import user_model
 import dao
 import api
 import word_check
@@ -25,13 +26,15 @@ DELETE_COMMAND = ("delete")
 STOP_COMMAND = ("stop")
 SAY_COMMAND = ("say")
 HELP_COMMAND = ("help")
+IGNORE_COMMAND = ("ignore")
+LISTEN_COMMAND = ("listen to")
 
 # globals
 global at_bot_id
 global at_target_user_id
 global defined_words
 global blacklisted_words
-global blacklisted_users
+global ignored_users
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -42,7 +45,7 @@ def handle_text(text, channel, message_data):
     if text.startswith("<@" + at_bot_id + ">"):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
-    elif 'user' in message_data and message_data['user'] not in blacklisted_users:    
+    elif 'user' in message_data and message_data['user'] not in ignored_users:    
         check_user_text(text, channel, message_data)
 
     return True
@@ -103,6 +106,10 @@ def handle_command(text, channel, message_data):
         handle_verbose(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
+    elif command.startswith(IGNORE_COMMAND):
+        handle_ignore(command, channel, message_data)
+    elif command.startswith(LISTEN_COMMAND):
+        handle_listen(command, channel, message_data)
     elif command.startswith(SAY_COMMAND):
         handle_say(text, channel, message_data)
     elif command.startswith(BLACKLIST_COMMAND):
@@ -353,6 +360,51 @@ def reply_definitions(definitions, channel):
         print("sending " + str(definition) + " to " + channel)
         api.send_reply(("*" + definition.word + "* means _" + definition.meaning + "_"), channel)
 
+def handle_ignore(command, channel, message_data):
+    user_name = command[7:]
+    user_id = ""
+    
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+    
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    user_object = user_model.User()
+    user_object.new(user_id, user_name, channel_name)
+
+    reply = ("Ok <@" + message_data['user'] + ">, I will ignore " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">") + " (except commands)")
+
+    dao.insert_ignored_user(user_object)
+    ignored_users.append(user_id)
+
+    api.send_reply(reply, channel)
+
+def handle_listen(command, channel, message_data):
+    user_name = command[10:]
+    user_id = ""
+
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+
+    reply = ("Ok <@" + message_data['user'] + ">, I will listen to " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">"))
+
+    dao.delete_ignored_by_user_id(user_id)
+    ignored_users.remove(user_id)
+
+    api.send_reply(reply, channel)
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     if slack_client.rtm_connect():
@@ -361,15 +413,15 @@ if __name__ == "__main__":
         global at_target_user_id
         global defined_words
         global blacklisted_words
-        global blacklisted_users
+        global ignored_users
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
         defined_words = dao.get_defined_words()
         blacklisted_words = dao.get_blacklisted_words()
-        blacklisted_users = []
+        ignored_users = dao.get_ignored_user_ids()
         print("Got all defined words: " + str(defined_words))
         print("Got all blacklisted words: " + str(blacklisted_words))
-        print("Got all blacklisted users: " + str(blacklisted_users))
+        print("Got all blacklisted users: " + str(ignored_users))
 
         run = True
         while run:
