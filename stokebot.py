@@ -126,6 +126,10 @@ def handle_help(channel):
                + ">`@stokebot add [word]: [meaning]` --- Use this command to add a definition to the database\n" \
                + ">`@stokebot [word] (means/is) [meaning]` --- Same as \"add\"\n" \
                + ">`@stokebot (define/what is) [word]` --- Use this command to look up a word in the database\n" \
+               + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
+               + "listen to commands\n" \
+               + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
+               + "asking him to \"ignore\" it previously\n" \
                + ">`@stokebot stop` --- Use this command if I get too annoying or messed up. I will have to be manually " \
                + "restarted afterward, but that's ok... I'm not programmed to have feelings, after all...:slightly_frowning_face:\n" \
                + "\nThere are a few other more advanced administration commands, but since this bot is " \
