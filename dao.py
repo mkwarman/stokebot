@@ -254,3 +254,52 @@ def get_blacklisted_words():
     return blacklisted_words
 
 
+def insert_ignored_user(user):
+    """ insert ignored user into ignore table """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' INSERT INTO ignore(user_id, user_name, channel, date_time_added) values(?, ?, ?, ?) '''
+
+    data = (user.user_id, user.user_name, user.channel, user.date_time_added)
+    print(user)
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_ignored_user_ids():
+    """ return a list of all ignored user ids """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT user_id FROM ignore '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    ignored = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return ignored
+
+def delete_ignored_by_user_id(user_id):
+    """ delete ignored user by user_id """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM ignore WHERE user_id=? '''
+
+    data = (user_id, )
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+
+
