@@ -13,6 +13,7 @@ BOT_NAME = "stokebot"
 BOT_OWNER_NAME = "mkwarman"
 TARGET_USER_NAME = "austoke"
 EXAMPLE_COMMAND = "do"
+
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
 SECONDARY_ADD_COMMAND = ("means", "is")
@@ -30,23 +31,24 @@ global at_bot_id
 global at_target_user_id
 global defined_words
 global blacklisted_words
+global blacklisted_users
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
+    print("User: " + message_data['user'])
     if text.startswith("<@" + at_bot_id + ">"):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
-    elif 'user' in message_data and at_target_user_id in message_data['user']:
-        print("Target user said: " + text)
-        check_target_user_text(text, channel, message_data)
+    elif 'user' in message_data and message_data['user'] not in blacklisted_users:    
+        check_user_text(text, channel, message_data)
 
     return True
 
-def check_target_user_text(text, channel, message_data):
-    print("Checking target user text")
+def check_user_text(text, channel, message_data):
+    print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
 
     for word in words:
@@ -59,6 +61,11 @@ def check_target_user_text(text, channel, message_data):
             print("found \"" + word + "\" in blacklisted_words")
             words.remove(word)
 
+    if 'user' in message_data and at_target_user_id in message_data['user']:
+        print("Target user said: " + text)
+        handle_target_user_text(words, channel, message_data)
+
+def handle_target_user_text(words, channel, message_data):
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
@@ -66,6 +73,14 @@ def check_target_user_text(text, channel, message_data):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
+        else:
+            # Insert dictionary word into the blacklist so we dont keep useing database queries
+            blacklisted_object = blacklisted_model.Blacklisted()
+            channel_name = api.get_name_from_id(message_data['channel'])
+            user_name = "[dictionary_api]"
+            blacklisted_object.new(word, user_name, channel_name)
+            dao.insert_blacklisted(blacklisted_object)
+            blacklisted_words.append(word)
 
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
@@ -191,10 +206,12 @@ def handle_verbose(command, channel):
 
 
 def handle_show_all(channel):
-    definitions = dao.select_all()
+    #definitions = dao.select_all()
     
     # Reply definitions from the database
-    reply_definitions(definitions, channel)
+    #reply_definitions(definitions, channel)
+
+    api.send_reply("Disabled until a better way of displaying all definitions is implemented (there's too dang many, people!)", channel)
 
 def listen_for_text(slack_rtm_output):
     """
@@ -344,12 +361,15 @@ if __name__ == "__main__":
         global at_target_user_id
         global defined_words
         global blacklisted_words
+        global blacklisted_users
         at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
         at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
         defined_words = dao.get_defined_words()
         blacklisted_words = dao.get_blacklisted_words()
+        blacklisted_users = []
         print("Got all defined words: " + str(defined_words))
         print("Got all blacklisted words: " + str(blacklisted_words))
+        print("Got all blacklisted users: " + str(blacklisted_users))
 
         run = True
         while run:
