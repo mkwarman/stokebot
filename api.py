@@ -11,7 +11,7 @@ def is_admin(user_id):
         users = api_call.get('members')
         for user in users:
             if 'id' in user and user.get('id') == user_id:
-                print("Got target user profile for '" + user['id'] + "': " + str(user))
+                print("Got target user profile for '" + user['id'])
                 return user.get('is_admin')
 
 def get_user_id(user_name):

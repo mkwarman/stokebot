@@ -103,8 +103,6 @@ def select_all_blacklisted():
 
     for row in rows:
         blacklisted = blacklisted_model.Blacklisted()
-        print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + str(row[4]))
         blacklisted.from_database(row[0], row[1], row[2], row[3], row[4])
 
         blacklist.append(blacklisted)
