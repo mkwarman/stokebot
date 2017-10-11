@@ -13,7 +13,6 @@ from slackclient import SlackClient
 BOT_NAME = "stokebot"
 BOT_OWNER_NAME = "mkwarman"
 TARGET_USER_NAME = "austoke"
-EXAMPLE_COMMAND = "do"
 
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -193,7 +192,7 @@ def handle_delete(command, channel, message_data):
         dao.delete_by_id(word_id)
         response = "Ok <@" +message_data['user'] + ">, I deleted ID " + word_id + ": \"" + definition.word + "\"."
     else:
-        response = "Sorry <@" +message_data['user'] + ">, only admins can delete words."
+        response = "Sorry <@" +message_data['user'] + ">, only admins can delete words currently."
 
     api.send_reply(response, channel)
 
