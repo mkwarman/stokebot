@@ -27,6 +27,7 @@ SAY_COMMAND = ("say")
 HELP_COMMAND = ("help")
 IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
+CHECK_COMMAND = ("check")
 
 # globals
 global at_bot_id
@@ -45,11 +46,11 @@ def handle_text(text, channel, message_data):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:    
-        check_user_text(text, channel, message_data)
+        check_user_text(text, channel, message_data, False)
 
     return True
 
-def check_user_text(text, channel, message_data):
+def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
     unique_words = set(words)
@@ -57,20 +58,24 @@ def check_user_text(text, channel, message_data):
 
     for word in list(unique_words):
         if word in defined_words:
-            print("found \"" + word + "\" in defined_words")
+            if testing_mode:
+                api.send_reply("Found \"" + word + "\" in defined_words", channel)
+            print("Found \"" + word + "\" in defined_words")
             definitions = dao.read_definition(word)
             dao.increment_word_usage_count(word, words.count(word))
             reply_definitions(definitions, channel)
             unique_words.remove(word)
         elif word in blacklisted_words:
-            print("found \"" + word + "\" in blacklisted_words")
+            if testing_mode:
+                api.send_reply("Found \"" + word + "\" in blacklisted_words", channel)
+            print("Found \"" + word + "\" in blacklisted_words")
             unique_words.remove(word)
 
-    if 'user' in message_data and at_target_user_id in message_data['user']:
+    if ('user' in message_data and at_target_user_id in message_data['user']) or testing_mode:
         print("Target user said: " + text)
-        handle_target_user_text(unique_words, channel, message_data)
+        handle_target_user_text(unique_words, channel, message_data, testing_mode)
 
-def handle_target_user_text(words, channel, message_data):
+def handle_target_user_text(words, channel, message_data, testing_mode):
     unknown_words = word_check.find_unknown_words(words)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
@@ -79,7 +84,10 @@ def handle_target_user_text(words, channel, message_data):
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, channel)
         else:
-            # Insert dictionary word into the blacklist so we dont keep useing database queries
+            # Insert dictionary word into the blacklist so we dont keep using database queries
+            if testing_mode:
+                api.send_reply("Found dictionary definition for \"" + word + "\". Adding to blacklist...", channel)
+            print("Found dictionary definition for \"" + word + "\". Adding to blacklist...")
             blacklisted_object = blacklisted_model.Blacklisted()
             channel_name = api.get_name_from_id(message_data['channel'])
             user_name = "[dictionary_api]"
@@ -116,12 +124,18 @@ def handle_command(text, channel, message_data):
         handle_say(text, channel, message_data)
     elif command.startswith(BLACKLIST_COMMAND):
         handle_blacklist(command, channel, message_data)
+    elif command.startswith(CHECK_COMMAND):
+        handle_check(command, channel, message_data)
     elif command == HELP_COMMAND:
         handle_help(channel)
     else:
         handle_unknown_command(channel)
 
     return True
+
+def handle_check(command, channel, message_data):
+    text = command[6:]
+    check_user_text(text, channel, message_data, True)
 
 def handle_help(channel):
     response = "Basic Commands:\n" \
