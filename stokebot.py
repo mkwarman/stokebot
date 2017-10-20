@@ -13,6 +13,8 @@ from slackclient import SlackClient
 BOT_NAME = "stokebot"
 BOT_OWNER_NAME = "mkwarman"
 TARGET_USER_NAME = "austoke"
+READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
+CONNECTION_ATTEMPT_RETRY_DELAY = 1
 
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -445,30 +447,39 @@ def handle_listen(command, channel, message_data):
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
-    if slack_client.rtm_connect():
-        print("StokeBot connected and running!")
-        global at_bot_id
-        global at_target_user_id
-        global defined_words
-        global blacklisted_words
-        global ignored_users
-        at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
-        at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
-        defined_words = dao.get_defined_words()
-        blacklisted_words = dao.get_blacklisted_words()
-        ignored_users = dao.get_ignored_user_ids()
-        print("Got all defined words: " + str(defined_words))
-        print("Got all blacklisted words: " + str(blacklisted_words))
-        print("Got all blacklisted users: " + str(ignored_users))
+    run = True
+    while run:
+        try:
+            if slack_client.rtm_connect():
+                print("StokeBot connected and running!")
+                global at_bot_id
+                global at_target_user_id
+                global defined_words
+                global blacklisted_words
+                global ignored_users
+                at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
+                at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
+                defined_words = dao.get_defined_words()
+                blacklisted_words = dao.get_blacklisted_words()
+                ignored_users = dao.get_ignored_user_ids()
+                print("Got all defined words: " + str(defined_words))
+                print("Got all blacklisted words: " + str(blacklisted_words))
+                print("Got all blacklisted users: " + str(ignored_users))
+        
+                while run:
+                    text, channel, message_data = listen_for_text(slack_client.rtm_read())
+                    if text and channel:
+                        run = handle_text(text, channel, message_data)
+                        if not run:
+                            api.send_reply(":broken_heart:", channel)
+                    time.sleep(READ_WEBSOCKET_DELAY)
+            else:
+                print("Connection failed. Invalid Slack token or Bot ID?")
 
-        run = True
-        while run:
-            text, channel, message_data = listen_for_text(slack_client.rtm_read())
-            if text and channel:
-                run = handle_text(text, channel, message_data)
-                if not run:
-                    api.send_reply(":broken_heart:", channel)
-            time.sleep(READ_WEBSOCKET_DELAY)
-    else:
-        print("Connection failed. Invalid Slack token or Bot ID?")
+        except (KeyboardInterrupt, SystemExit):
+            print ("Stopping...")
+            quit()
+        except Exception as e:
+            print ("Encountered error: " + str(e))
 
+        time.sleep(CONNECTION_ATTEMPT_RETRY_DELAY)
