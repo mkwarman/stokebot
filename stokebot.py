@@ -10,9 +10,9 @@ import re
 from slackclient import SlackClient
 
 # constants
-BOT_NAME = "stokebot"
-BOT_OWNER_NAME = "mkwarman"
-TARGET_USER_NAME = "austoke"
+BOT_NAME = os.environ.get('BOT_NAME')#"stokebot"
+BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
+TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
 
