@@ -110,7 +110,7 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
-    elif SECONDARY_ADD_COMMAND in command:
+    elif MEANS_COMMAND in command:
         handle_means(command, channel, message_data)
     elif command in SHOW_ALL_COMMAND:
         handle_show_all(channel)
@@ -279,12 +279,10 @@ def handle_read_definition(command, channel, message_data):
     reply_definitions(definitions, channel)
 
 def handle_means(command, channel, message_data):
-    command_data = command.split("is");
-    x = command_data[0]
-    y = command_data[2]
-    api.send_reply("in development", channel)
-    api.send_reply("x: " + str(x) + " --- y: " + str(y))
-    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    command_data = command.split("means");
+    x = command_data[0].strip()
+    y = command_data[1].strip()
+    api.send_reply("x: " + str(x) + " --- y: " + str(y), channel)
 #    command_data = command.split(" ")
 
 #    word = command_data[0]
