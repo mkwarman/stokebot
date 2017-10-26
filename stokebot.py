@@ -24,7 +24,7 @@ READ_COMMAND = ("what is", "define")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
 STATUS_COMMAND = ("status")
-SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
+#SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
 DELETE_COMMAND = ("delete")
 STOP_COMMAND = ("stop")
 SAY_COMMAND = ("say")
@@ -113,13 +113,13 @@ def handle_command(text, channel, message_data):
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
     elif MEANS_COMMAND in command:
-        handle_means(command, channel, message_data)
+        handle_multi(command, channel, message_data, MEANS_COMMAND)
     elif IS_COMMAND in command:
-        handle_is(command, channel, message_data)
+        handle_multi(command, channel, message_data, IS_COMMAND)
     elif ARE_COMMAND in command:
-        handle_are(command, channel, message_data)
-    elif command in SHOW_ALL_COMMAND:
-        handle_show_all(channel)
+        handle_multi(command, channel, message_data, ARE_COMMAND)
+#    elif command in SHOW_ALL_COMMAND:
+#        handle_show_all(channel)
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
     elif command.startswith(DELETE_COMMAND):
@@ -239,7 +239,7 @@ def handle_verbose(command, channel):
         print(definition)
         api.send_reply(str(definition), channel)
 
-
+"""
 def handle_show_all(channel):
     #definitions = dao.select_all()
 
@@ -247,6 +247,7 @@ def handle_show_all(channel):
     #reply_definitions(definitions, channel)
 
     api.send_reply("Disabled until a better way of displaying all definitions is implemented (there's too dang many, people!)", channel)
+"""
 
 def listen_for_text(slack_rtm_output):
     """
@@ -284,29 +285,14 @@ def handle_read_definition(command, channel, message_data):
     # Reply definitions from the database
     reply_definitions(definitions, channel)
 
-def handle_means(command, channel, message_data):
-    command_data = command.split(MEANS_COMMAND);
+def handle_multi(command, channel, message_data, command_root):
+    command_data = command.split(command_root)
     x = command_data[0].strip()
     y = command_data[1].strip()
-    api.send_reply("x: " + str(x) + " MEANS y: " + str(y), channel)
-#    command_data = command.split(" ")
+    relation = command_root.strip()
 
-#    word = command_data[0]
-#    meaning = " ".join(command_data[2:])
+    add_definition(x, relation, y, channel, message_data)
 
-#    add_definition(word, meaning, channel, message_data)
-
-def handle_is(command, channel, message_data):
-    command_data = command.split(IS_COMMAND)
-    x = command_data[0].strip()
-    y = command_data[1].strip()
-    api.send_reply("x: " + str(x) + " IS y: " + str(y), channel)
-
-def handle_are(command, channel, message_data):
-    command_data = command.split(ARE_COMMAND)
-    x = command_data[0].strip()
-    y = command_data[1].strip()
-    api.send_reply("x: " + str(x) + " ARE y: " + str(y), channel)
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
@@ -317,10 +303,11 @@ def handle_add_definition(command, channel, message_data):
     word_and_meaning = command[3:].split(":")
     word = word_and_meaning[0].strip()
     meaning = word_and_meaning[1].strip()
+    relation = 'means'
 
-    add_definition(word, meaning, channel, message_data)
+    add_definition(word, relation, meaning, channel, message_data)
 
-def add_definition(word, meaning, channel, message_data):
+def add_definition(word, relation, meaning, channel, message_data):
     # Instantiate definition object
     definition_object = definition_model.Definition()
 
@@ -330,9 +317,9 @@ def add_definition(word, meaning, channel, message_data):
 
     # Populate definition object
     defined_words.append(word)
-    definition_object.new(word, meaning, user_name, channel_name)
+    definition_object.new(word, relation, meaning, user_name, channel_name)
 
-    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " means " + meaning, channel)
+    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " " + relation + " " + meaning, channel)
     print("attempting to insert into database: " + str(definition_object))
 
     # Send definition object to database

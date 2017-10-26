@@ -116,7 +116,7 @@ def get_by_id(unique_id):
     """ return word associated with input unique_id """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT id, word, meaning, user, channel, date_time_added FROM definitions WHERE id=? '''
+    sql = ''' SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions WHERE id=? '''
 
     data = (unique_id,)
     cursor.execute(sql, data)
@@ -126,8 +126,8 @@ def get_by_id(unique_id):
     if row:
         definition = definition_model.Definition()
         print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
         return definition
     else:
@@ -153,7 +153,7 @@ def select_all():
 
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT id, word, meaning, user, channel, date_time_added FROM definitions")
+    cursor.execute("SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions")
 
     rows = cursor.fetchall()
 
@@ -162,8 +162,8 @@ def select_all():
     for row in rows:
         definition = definition_model.Definition()
         print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
         definitions.append(definition)
 
     cursor.close()
@@ -176,9 +176,9 @@ def insert_definition(definition):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' INSERT INTO definitions(word, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?) '''
+    sql = ''' INSERT INTO definitions(word, relation, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?, ?) '''
 
-    data = (definition.word, definition.meaning, definition.user, definition.channel, definition.date_time_added)
+    data = (definition.word, definition.relation, definition.meaning, definition.user, definition.channel, definition.date_time_added)
     print(data)
     cursor.execute(sql, data)
     print(cursor)
@@ -192,7 +192,7 @@ def read_definition(word):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT id, word, meaning, user, channel, date_time_added FROM definitions WHERE word=? '''
+    sql = ''' SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions WHERE word=? '''
 
     print("word: " + word)
     data = (word,)
@@ -206,8 +206,8 @@ def read_definition(word):
     for row in rows:
         definition = definition_model.Definition()
         print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
         definitions.append(definition)
 
     cursor.close()
