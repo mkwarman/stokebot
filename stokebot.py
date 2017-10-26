@@ -18,7 +18,7 @@ CONNECTION_ATTEMPT_RETRY_DELAY = 1
 
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
-SECONDARY_ADD_COMMAND = ("means", "is")
+MEANS_COMMAND = ("means")
 READ_COMMAND = ("what is", "define")
 VERBOSE_COMMAND = ("verbose")
 STATUS_COMMAND = ("status")
@@ -47,7 +47,7 @@ def handle_text(text, channel, message_data):
     if text.startswith("<@" + at_bot_id + ">"):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
-    elif 'user' in message_data and message_data['user'] not in ignored_users:    
+    elif 'user' in message_data and message_data['user'] not in ignored_users:
         check_user_text(text, channel, message_data, False)
 
     return True
@@ -56,7 +56,7 @@ def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
     unique_words = set(words)
-    
+
 
     for word in list(unique_words):
         if word in defined_words:
@@ -110,8 +110,8 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
-    elif len(command.split(" ")) > 2 and command.split(" ")[1] in SECONDARY_ADD_COMMAND:
-        handle_secondary_add_definition(command, channel, message_data)
+    elif SECONDARY_ADD_COMMAND in command:
+        handle_means(command, channel, message_data)
     elif command in SHOW_ALL_COMMAND:
         handle_show_all(channel)
     elif command.startswith(VERBOSE_COMMAND):
@@ -142,7 +142,7 @@ def handle_check(command, channel, message_data):
 def handle_help(channel):
     response = "Basic Commands:\n" \
                + ">`@stokebot add [word]: [meaning]` --- Use this command to add a definition to the database\n" \
-               + ">`@stokebot [word] (means/is) [meaning]` --- Same as \"add\"\n" \
+               + ">`@stokebot [word] means [meaning]` --- Use this command to add a definition to the database\n" \
                + ">`@stokebot (define/what is) [word]` --- Use this command to look up a word in the database\n" \
                + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
                + "listen to commands\n" \
@@ -164,7 +164,7 @@ def handle_say(text, channel, message_data):
     phrase_data = raw_phrase.lower().split(" ")
     print("phrase_data: ", phrase_data)
 
-    at_user = "<@" + message_data['user'] + ">" 
+    at_user = "<@" + message_data['user'] + ">"
 
     replacements = {"you" : "I",
                     "you're": "I am",
@@ -184,7 +184,7 @@ def handle_say(text, channel, message_data):
             replacement2_word = replacements2[phrase_data[1]]
             print("Replacing \"" + phrase_data[1] + "\" with \"" + replacement2_word + "\"")
             phrase_data[1] = replacement2_word
-        
+
         response = " ".join(phrase_data)
     else:
         response = raw_phrase
@@ -193,7 +193,7 @@ def handle_say(text, channel, message_data):
 
 def handle_unknown_command(channel):
     api.send_reply("Command not recognized. Try `@stokebot help`", channel)
-            
+
 def handle_delete(command, channel, message_data):
     # Extract just the word from the command
     #word_id = command[len([command_text for command_text in DELETE_COMMAND if command.startswith(command_text)][0]):].strip()
@@ -222,7 +222,7 @@ def handle_verbose(command, channel):
 
     # Read the definition from the database
     definitions = dao.read_definition(word)
-    
+
     # If no definitions present
     if not definitions:
         api.send_reply("No definitions present for \"" + word + "\"", channel)
@@ -236,7 +236,7 @@ def handle_verbose(command, channel):
 
 def handle_show_all(channel):
     #definitions = dao.select_all()
-    
+
     # Reply definitions from the database
     #reply_definitions(definitions, channel)
 
@@ -265,11 +265,11 @@ def handle_read_definition(command, channel, message_data):
     word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
     sanitized_word = re.sub("[^a-z -'’]", "", word)
     print("sanitized_word: " + sanitized_word)
-    
+
     # Read the definition from the database
     definitions = dao.read_definition(sanitized_word)
     print(definitions)
-    
+
     # If no definitions present
     if not definitions:
         api.send_reply("No definitions present for \"" + sanitized_word + "\"", channel)
@@ -277,15 +277,20 @@ def handle_read_definition(command, channel, message_data):
 
     # Reply definitions from the database
     reply_definitions(definitions, channel)
-    
-def handle_secondary_add_definition(command, channel, message_data):
+
+def handle_means(command, channel, message_data):
+    command_data = command.split("is");
+    x = command_data[0]
+    y = command_data[2]
+    api.send_reply("in development", channel)
+    api.send_reply("x: " + str(x) + " --- y: " + str(y))
     #command = text.split("<@" + at_bot_id + ">")[1].strip()
-    command_data = command.split(" ")
+#    command_data = command.split(" ")
 
-    word = command_data[0]
-    meaning = " ".join(command_data[2:])
+#    word = command_data[0]
+#    meaning = " ".join(command_data[2:])
 
-    add_definition(word, meaning, channel, message_data)
+#    add_definition(word, meaning, channel, message_data)
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
@@ -302,8 +307,8 @@ def handle_add_definition(command, channel, message_data):
 def add_definition(word, meaning, channel, message_data):
     # Instantiate definition object
     definition_object = definition_model.Definition()
-    
-    # Get friendly names of user and channel 
+
+    # Get friendly names of user and channel
     user_name = api.get_user_name(message_data['user'])
     channel_name = api.get_name_from_id(message_data['channel'])
 
@@ -313,7 +318,7 @@ def add_definition(word, meaning, channel, message_data):
 
     api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " means " + meaning, channel)
     print("attempting to insert into database: " + str(definition_object))
-    
+
     # Send definition object to database
     dao.insert_definition(definition_object)
 
@@ -335,7 +340,7 @@ def handle_blacklist(command, channel, message_data):
             blacklist_showall(channel)
         else:
             api.send_reply("Try \"backlist add\", \"backlist get\", \"backlist delete\", or \"blacklist showall\"", channel)
-    
+
     else:
         api.send_reply("Sorry <@" +message_data['user'] + ">, only admins can edit the blacklist.", channel)
 
@@ -363,12 +368,12 @@ def blacklist_read(word, channel, message_data):
 def blacklist_delete(blacklisted_id, channel, message_data):
     blacklisted = dao.get_blacklisted_by_id(blacklisted_id)
     if not blacklisted:
-        api.send_reply("ID " + blacklisted_id + " does not exist.", channel) 
+        api.send_reply("ID " + blacklisted_id + " does not exist.", channel)
         return
     dao.delete_blacklisted_by_id(blacklisted_id)
     blacklisted_words.remove(blacklisted.word)
 
-    api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)   
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)
 
 def blacklist_showall(channel):
     blacklist = dao.select_all_blacklisted()
@@ -385,7 +390,7 @@ def reply_definitions(definitions, channel):
 def handle_ignore(command, channel, message_data):
     user_name = command[7:]
     user_id = ""
-    
+
     if user_name == "me":
         user_name = api.get_user_name(message_data['user'])
     elif user_name.startswith("<@"):
@@ -394,7 +399,7 @@ def handle_ignore(command, channel, message_data):
 
     if not user_id:
         user_id = api.get_user_id(user_name)
-    
+
     channel_name = api.get_name_from_id(message_data['channel'])
 
     if not (user_id and user_name):
@@ -403,7 +408,7 @@ def handle_ignore(command, channel, message_data):
 
     user_object = user_model.User()
     user_object.new(user_id, user_name, channel_name)
-    
+
     reply = ("Ok <@" + message_data['user'] + ">, I will ignore " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">") + " (except commands)")
 
     if user_id not in ignored_users:
@@ -465,7 +470,7 @@ if __name__ == "__main__":
                 print("Got all defined words: " + str(defined_words))
                 print("Got all blacklisted words: " + str(blacklisted_words))
                 print("Got all blacklisted users: " + str(ignored_users))
-        
+
                 while run:
                     text, channel, message_data = listen_for_text(slack_client.rtm_read())
                     if text and channel:
