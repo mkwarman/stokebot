@@ -19,6 +19,7 @@ CONNECTION_ATTEMPT_RETRY_DELAY = 1
 ADD_COMMAND = ("add")
 MEANS_COMMAND = (" means ")
 IS_COMMAND = (" is ")
+ARE_COMMAND = (" are ")
 READ_COMMAND = ("what is", "define")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
@@ -115,6 +116,8 @@ def handle_command(text, channel, message_data):
         handle_means(command, channel, message_data)
     elif IS_COMMAND in command:
         handle_is(command, channel, message_data)
+    elif ARE_COMMAND in command:
+        handle_are(command, channel, message_data)
     elif command in SHOW_ALL_COMMAND:
         handle_show_all(channel)
     elif command.startswith(VERBOSE_COMMAND):
@@ -294,10 +297,16 @@ def handle_means(command, channel, message_data):
 #    add_definition(word, meaning, channel, message_data)
 
 def handle_is(command, channel, message_data):
-    command_data = command.split(IS_COMMAND);
+    command_data = command.split(IS_COMMAND)
     x = command_data[0].strip()
     y = command_data[1].strip()
     api.send_reply("x: " + str(x) + " IS y: " + str(y), channel)
+
+def handle_are(command, channel, message_data):
+    command_data = command.split(ARE_COMMAND)
+    x = command_data[0].strip()
+    y = command_data[1].strip()
+    api.send_reply("x: " + str(x) + " ARE y: " + str(y), channel)
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
