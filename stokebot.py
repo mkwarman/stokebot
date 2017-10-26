@@ -17,9 +17,10 @@ READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
 
 ADD_COMMAND = ("add")
-BLACKLIST_COMMAND = ("blacklist")
 MEANS_COMMAND = ("means")
+IS_COMMAND = ("is")
 READ_COMMAND = ("what is", "define")
+BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
 STATUS_COMMAND = ("status")
 SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
@@ -112,6 +113,8 @@ def handle_command(text, channel, message_data):
         handle_status_inquiry(channel)
     elif MEANS_COMMAND in command:
         handle_means(command, channel, message_data)
+    elif IS_COMMAND in command:
+        handle_is(command, channel, message_data)
     elif command in SHOW_ALL_COMMAND:
         handle_show_all(channel)
     elif command.startswith(VERBOSE_COMMAND):
@@ -289,6 +292,12 @@ def handle_means(command, channel, message_data):
 #    meaning = " ".join(command_data[2:])
 
 #    add_definition(word, meaning, channel, message_data)
+
+def handle_is(command, channel, message_data):
+    command_data = command.split("is");
+    x = command_data[0].strip()
+    y = command_data[1].strip()
+    api.send_reply("x: " + str(x) + " --- y: " + str(y), channel)
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
