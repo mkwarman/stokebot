@@ -27,7 +27,7 @@ def get_blacklisted_by_word(word):
     """ return blacklisted word data based on input word """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM blacklist WHERE word=? '''
+    sql = ''' SELECT id, word, user, channel, date_time_added FROM blacklist WHERE word=? '''
 
     data = (word,)
     cursor.execute(sql, data)
@@ -45,7 +45,7 @@ def get_blacklisted_by_id(unique_id):
     """ return blacklisted word data based on input unique id """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM blacklist WHERE id=? '''
+    sql = ''' SELECT id, word, user, channel, date_time_added FROM blacklist WHERE id=? '''
 
     data = (unique_id,)
     cursor.execute(sql, data)
@@ -95,7 +95,7 @@ def select_all_blacklisted():
 
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM blacklist")
+    cursor.execute("SELECT id, word, user, channel, date_time_added FROM blacklist")
 
     rows = cursor.fetchall()
 
@@ -128,7 +128,7 @@ def get_by_id(unique_id):
         print(row)
         print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
         definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
-    
+
         return definition
     else:
         return None
@@ -163,12 +163,12 @@ def select_all():
         definition = definition_model.Definition()
         print(row)
         print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])                                            
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
         definitions.append(definition)
 
     cursor.close()
     connection.close()
-    
+
     return definitions
 
 def insert_definition(definition):
@@ -177,7 +177,7 @@ def insert_definition(definition):
     connection = create_connection()
     cursor = connection.cursor()
     sql = ''' INSERT INTO definitions(word, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?) '''
-    
+
     data = (definition.word, definition.meaning, definition.user, definition.channel, definition.date_time_added)
     print(data)
     cursor.execute(sql, data)
@@ -198,7 +198,7 @@ def read_definition(word):
     data = (word,)
     cursor.execute(sql, data)
     print(cursor)
-    
+
     rows = cursor.fetchall()
 
     definitions = []
@@ -225,7 +225,7 @@ def get_defined_words():
     cursor.execute(sql)
 
     rows = cursor.fetchall()
-    
+
     definitions = [row[0] for row in rows]
 
     cursor.close()
@@ -316,4 +316,3 @@ def increment_word_usage_count(word, times_used):
 
     cursor.close()
     connection.close()
-
