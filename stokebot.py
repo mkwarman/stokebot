@@ -17,8 +17,8 @@ READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
 
 ADD_COMMAND = ("add")
-MEANS_COMMAND = ("means")
-IS_COMMAND = ("is")
+MEANS_COMMAND = (" means ")
+IS_COMMAND = (" is ")
 READ_COMMAND = ("what is", "define")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
@@ -282,10 +282,10 @@ def handle_read_definition(command, channel, message_data):
     reply_definitions(definitions, channel)
 
 def handle_means(command, channel, message_data):
-    command_data = command.split("means");
+    command_data = command.split(MEANS_COMMAND);
     x = command_data[0].strip()
     y = command_data[1].strip()
-    api.send_reply("x: " + str(x) + " --- y: " + str(y), channel)
+    api.send_reply("x: " + str(x) + " MEANS y: " + str(y), channel)
 #    command_data = command.split(" ")
 
 #    word = command_data[0]
@@ -294,10 +294,10 @@ def handle_means(command, channel, message_data):
 #    add_definition(word, meaning, channel, message_data)
 
 def handle_is(command, channel, message_data):
-    command_data = command.split("is");
+    command_data = command.split(IS_COMMAND);
     x = command_data[0].strip()
     y = command_data[1].strip()
-    api.send_reply("x: " + str(x) + " --- y: " + str(y), channel)
+    api.send_reply("x: " + str(x) + " IS y: " + str(y), channel)
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
