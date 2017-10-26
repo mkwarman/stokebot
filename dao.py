@@ -116,7 +116,7 @@ def get_by_id(unique_id):
     """ return word associated with input unique_id """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM definitions WHERE id=? '''
+    sql = ''' SELECT id, word, meaning, user, channel, date_time_added FROM definitions WHERE id=? '''
 
     data = (unique_id,)
     cursor.execute(sql, data)
@@ -153,7 +153,7 @@ def select_all():
 
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM definitions")
+    cursor.execute("SELECT id, word, meaning, user, channel, date_time_added FROM definitions")
 
     rows = cursor.fetchall()
 
@@ -192,7 +192,7 @@ def read_definition(word):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM definitions WHERE word=? '''
+    sql = ''' SELECT id, word, meaning, user, channel, date_time_added FROM definitions WHERE word=? '''
 
     print("word: " + word)
     data = (word,)
