@@ -15,6 +15,9 @@ BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
 TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
+POSSESSIVE_DENOTION = "possessive"
+REPLY_DENOTION = "reply"
+ACTION_DENOTION = "action"
 
 ADD_COMMAND = ("add")
 MEANS_COMMAND = (" means ")
@@ -32,6 +35,11 @@ HELP_COMMAND = ("help")
 IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
+
+# Matches to check for when explicit relation is detected
+POSSESSIVE_MATCH = ("'s")
+REPLY_MATCH = ("reply")
+ACTION_MATCH = ("action")
 
 # globals
 global at_bot_id
@@ -104,7 +112,12 @@ def handle_command(text, channel, message_data):
     print("In handle_command")
     command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
     print("Parsed command: " + command)
-    if command == STOP_COMMAND:
+
+    relation = check_for_explicit_relation(command)
+
+    if relation:
+        handle_explicit_relation(command, channel, message_data, relation)
+    elif command == STOP_COMMAND:
         return False
     elif command.startswith(ADD_COMMAND):
         handle_add_definition(command, channel, message_data)
@@ -140,6 +153,31 @@ def handle_command(text, channel, message_data):
         handle_unknown_command(channel)
 
     return True
+
+def check_for_explicit_relation(command):
+    pattern = re.compile("<(([^@#>])+)>")
+    match = pattern.search(command)
+    if not match:
+        return False
+    else:
+        return match
+
+def handle_explicit_relation(command, channel, message_data, relation):
+    command_data = command.split(relation)
+    x = command_data[0]
+    y = command_data[1]
+    stripped_relation = relation[1:-1] # Strip relation of its "<" and ">"
+
+    if stripped_relation == "'s":
+        relation = POSSESSIVE_DENOTION
+    elif == "reply":
+        relation = REPLY_DENOTION
+    elif == "action":
+        relation = ACTION_DENOTION
+    else:
+        relation = stripped_relation
+
+    add_definition(x, relation, y, channel, message_data)
 
 def handle_check(command, channel, message_data):
     text = command[6:]
