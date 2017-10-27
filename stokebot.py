@@ -170,9 +170,9 @@ def handle_explicit_relation(command, channel, message_data, relation):
 
     if stripped_relation == "'s":
         relation = POSSESSIVE_DENOTION
-    elif == "reply":
+    elif stripped_relation == "reply":
         relation = REPLY_DENOTION
-    elif == "action":
+    elif stripped_relation == "action":
         relation = ACTION_DENOTION
     else:
         relation = stripped_relation
