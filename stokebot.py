@@ -155,18 +155,19 @@ def handle_command(text, channel, message_data):
     return True
 
 def check_for_explicit_relation(command):
-    pattern = re.compile("<(([^@#>])+)>")
+    #pattern = re.compile("<(([^@#>])+)>")
+    pattern = re.compile("&lt;([^@#<>]+)&gt;")
     match = pattern.search(command)
     if not match:
         return False
     else:
-        return match
+        return match.group(0)
 
 def handle_explicit_relation(command, channel, message_data, relation):
     command_data = command.split(relation)
-    x = command_data[0]
-    y = command_data[1]
-    stripped_relation = relation[1:-1] # Strip relation of its "<" and ">"
+    x = command_data[0].strip()
+    y = command_data[1].strip()
+    stripped_relation = relation[4:-4]
 
     if stripped_relation == "'s":
         relation = POSSESSIVE_DENOTION
