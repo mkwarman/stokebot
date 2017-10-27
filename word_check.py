@@ -13,6 +13,7 @@ def known(words):
     return set(word for word in words if word in WORDS)
 
 def edits(word):
+    print("In edits(" + word + ")")
     """ All words one edit away from 'word' """
     letters    = 'abcdefghijklmnopqrstuvwxyz'
     splits     = [(word[:index], word[index:])           for index in range(len(word) + 1)]
@@ -21,6 +22,14 @@ def edits(word):
     replaces   = [left + letter + right[1:]              for left, right in splits if right for letter in letters]
     inserts    = [left + letter + right                  for left, right in splits for letter in letters]
     return set(deletes + transposes + replaces + inserts)
+
+def check_edits(word):
+    all_edits = edits(word)
+    potential_edits = [word for word in all_edits if word in WORDS]
+    if len(potential_edits) > 0:
+        return True
+    else:
+        return False
 
 def sanitize_and_split_words(text):
     print("About sanitize and split \"" + text + "\"")
@@ -35,7 +44,8 @@ def sanitize_and_split_words(text):
 def find_unknown_words(words):
     print("Finding unknown words in: ", words)
     known_words = known(words)
-    unknown_words = [word for word in words if len(word) > 3 and word not in known_words]
+    unknown_words = [word for word in words if (len(word) > 3 and word not in known_words)]
+    unknown_words = [word for word in unknown_words if not check_edits(word)]
     print("Unknown words: ", unknown_words)
     return unknown_words
 
