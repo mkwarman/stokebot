@@ -128,7 +128,7 @@ def get_by_id(unique_id):
         print(row)
         print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
         definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
-    
+
         return definition
     else:
         return None
@@ -163,12 +163,12 @@ def select_all():
         definition = definition_model.Definition()
         print(row)
         print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])                                            
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
         definitions.append(definition)
 
     cursor.close()
     connection.close()
-    
+
     return definitions
 
 def insert_definition(definition):
@@ -177,7 +177,7 @@ def insert_definition(definition):
     connection = create_connection()
     cursor = connection.cursor()
     sql = ''' INSERT INTO definitions(word, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?) '''
-    
+
     data = (definition.word, definition.meaning, definition.user, definition.channel, definition.date_time_added)
     print(data)
     cursor.execute(sql, data)
@@ -198,7 +198,7 @@ def read_definition(word):
     data = (word,)
     cursor.execute(sql, data)
     print(cursor)
-    
+
     rows = cursor.fetchall()
 
     definitions = []
@@ -225,7 +225,7 @@ def get_defined_words():
     cursor.execute(sql)
 
     rows = cursor.fetchall()
-    
+
     definitions = [row[0] for row in rows]
 
     cursor.close()
@@ -317,3 +317,36 @@ def increment_word_usage_count(word, times_used):
     cursor.close()
     connection.close()
 
+def update_karma(key, delta):
+    """ Add or remove entity karma """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql_insert = ''' INSERT OR IGNORE INTO karma(key, karma) VALUES(?, 0) '''
+    sql_update = ''' UPDATE karma SET karma=karma+? WHERE key LIKE ?; '''
+
+    data_insert = (user_id, )
+    data_update = (delta, key)
+
+    cursor.execute(sql_insert, data_insert)
+    cursor.execute(sql_update, data_update)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_karma(key):
+    """ get entity karma """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT karma FROM karma WHERE key=? '''
+
+    cursor.execute(sql)
+
+    karma = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    return karma
