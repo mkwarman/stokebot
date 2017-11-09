@@ -56,13 +56,13 @@ def get_group_name(group_id):
 
 def get_name_from_id(input_id):
     print("get_name_from_id: " + input_id)
-    if id.startswith("U"):
+    if input_id.startswith("U"):
         return get_user_name(input_id)
-    elif id.startswith("C"):
+    elif input_id.startswith("C"):
         return get_channel_name(input_id)
-    elif id.startswith("G"):
+    elif input_id.startswith("G"):
         return get_group_name(input_id)
-    elif id.startswith("D"):
+    elif input_id.startswith("D"):
         return "direct message"
     else:
         print("get_name_from_id encountered unhandled ID")
@@ -73,19 +73,19 @@ def is_private_channel(channel_id):
     if api_call.get('ok'):
         channel = api_call.get('channel')
         if 'is_private' in channel:
-            print("Got privacy status for '" + channel.get('name') + ": " + channel.get('is_private'))
+            print("Got privacy status for '" + channel.get('name') + "': " + str(channel.get('is_private')))
             return channel.get('is_private')
 
 def is_private(input_id):
-    if id.startswith("C"):
+    if input_id.startswith("C"):
         return is_private_channel(input_id)
-    elif id.startswith("G"):
-        return true
-    elif id.startswith("D"):
-        return true
+    elif input_id.startswith("G"):
+        return True
+    elif input_id.startswith("D"):
+        return True
     else:
         print("is_private encountered unhandled ID")
-        return true
+        return True
 
 
 def send_reply(text, channel):

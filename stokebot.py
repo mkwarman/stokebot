@@ -82,7 +82,7 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     if ('user' in message_data and at_target_user_id in message_data['user']) or testing_mode:
-        print("Target user said: " + text)
+    #    print("Target user said: " + text)
         handle_target_user_text(unique_words, channel, message_data, testing_mode)
 
 def handle_target_user_text(words, channel, message_data, testing_mode):
