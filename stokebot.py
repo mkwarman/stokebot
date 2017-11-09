@@ -21,7 +21,7 @@ BLACKLIST_COMMAND = ("blacklist")
 SECONDARY_ADD_COMMAND = ("means", "is")
 READ_COMMAND = ("what is", "define")
 VERBOSE_COMMAND = ("verbose")
-VERBOSE_COMMAND = ("karma")
+KARMA_COMMAND = ("karma")
 STATUS_COMMAND = ("status")
 SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
 DELETE_COMMAND = ("delete")
@@ -31,6 +31,8 @@ HELP_COMMAND = ("help")
 IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
+
+MAX_KARMA_CHANGE = 10
 
 # globals
 global at_bot_id
@@ -45,7 +47,8 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 def handle_text(text, channel, message_data):
     print("Handling text")
     print("User: " + message_data['user'])
-    if text.startswith("<@" + at_bot_id + ">"):
+    bot_match = "<@" + at_bot_id + ">"
+    if (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:
@@ -57,11 +60,11 @@ def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
     words = word_check.sanitize_and_split_words(text)
     unique_words = set(words)
-    karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+)(\+\++|--+)')
+    karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
     karma = karma_regex.search(text);
     if karma:
-        handle_karma_change(karma, channel)
+        handle_karma_change(karma, channel, message_data)
 
     for word in list(unique_words):
         if word in defined_words:
@@ -142,29 +145,50 @@ def handle_command(text, channel, message_data):
 
     return True
 
-def handle_karma_change(karma, channel):
-    key = karma.group(1)
+def handle_karma_change(karma, channel, message_data):
+    key = karma.group(1).lower()
     operator = karma.group(2)
-    response = key + "'s karma has "
+    delta = len(operator) - 1
+    response = (to_upper_if_tag(key)) + "'s karma has "
+
+    if (key == "<@" + message_data['user'].lower() + ">"):
+        # Don't let users vote on themselves
+        if (operator[0] == '+'):
+            response = "It's rude to toot your own horn."
+        else:
+            response = "Don't be so hard on yourself!"
+        api.send_reply(response, channel)
+        return
+
+    if (delta > MAX_KARMA_CHANGE):
+        api.send_reply("Max karma change of 10 points enforced!", channel)
+        delta = 10
 
     if (operator[0] == '+'):
-        delta = len(operator)
         response += "increased"
     else:
-        delta = -len(operator)
+        delta = -delta
         response += "decreased"
 
     dao.update_karma(key, delta)
 
-    response += "to " + dao.get_karma(key)
+    response += " to " + str(dao.get_karma(key))
 
-    send_reply(response, channel)
+    api.send_reply(response, channel)
 
 def handle_karma(text, channel):
-    key = text.split(" ")[0]
-    response = key + "'s karma is " + dao.get_karma(key)
+    key = text.split(" ")[1]
 
-    send_reply(response, channel)
+    response = to_upper_if_tag(key)
+
+    karma = dao.get_karma(key)
+
+    if not karma:
+        response += " has no karma score!"
+    else:
+        response += "'s karma is " + str(karma)
+
+    api.send_reply(response, channel)
 
 def handle_check(command, channel, message_data):
     text = command[6:]
@@ -475,6 +499,16 @@ def handle_listen(command, channel, message_data):
     api.send_reply(reply, channel)
 
     print("new ignored_users: " + str(ignored_users))
+
+def to_upper_if_tag(text):
+    tag_check = re.compile(r'(<(?:@|#)[^ ]+>)')
+    search_result = tag_check.search(text)
+
+    if search_result:
+        tag = search_result.group(1)
+        text = text.replace(tag, tag.upper())
+
+    return text
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose

@@ -325,7 +325,7 @@ def update_karma(key, delta):
     sql_insert = ''' INSERT OR IGNORE INTO karma(key, karma) VALUES(?, 0) '''
     sql_update = ''' UPDATE karma SET karma=karma+? WHERE key LIKE ?; '''
 
-    data_insert = (user_id, )
+    data_insert = (key, )
     data_update = (delta, key)
 
     cursor.execute(sql_insert, data_insert)
@@ -342,11 +342,15 @@ def get_karma(key):
     cursor = connection.cursor()
     sql = ''' SELECT karma FROM karma WHERE key=? '''
 
-    cursor.execute(sql)
+    data = (key, )
+    cursor.execute(sql, data)
 
     karma = cursor.fetchone()
 
     cursor.close()
     connection.close()
 
-    return karma
+    if karma:
+        return karma[0]
+    else:
+        return None
