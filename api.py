@@ -54,19 +54,39 @@ def get_group_name(group_id):
             print("Got target group name for '" + group['id'] + "': " + group.get('name'))
             return group.get('name')
 
-def get_name_from_id(id):
-    print("get_name_from_id: " + id)
+def get_name_from_id(input_id):
+    print("get_name_from_id: " + input_id)
     if id.startswith("U"):
-        return get_user_name(id)
+        return get_user_name(input_id)
     elif id.startswith("C"):
-        return get_channel_name(id)
+        return get_channel_name(input_id)
     elif id.startswith("G"):
-        return get_group_name(id)
+        return get_group_name(input_id)
     elif id.startswith("D"):
         return "direct message"
     else:
         print("get_name_from_id encountered unhandled ID")
         return "unknown"
+
+def is_private_channel(channel_id):
+    api_call = slack_client.api_call("channels.info", channel=channel_id)
+    if api_call.get('ok'):
+        channel = api_call.get('channel')
+        if 'is_private' in channel:
+            print("Got privacy status for '" + channel.get('name') + ": " + channel.get('is_private'))
+            return channel.get('is_private')
+
+def is_private(input_id):
+    if id.startswith("C"):
+        return is_private_channel(input_id)
+    elif id.startswith("G"):
+        return true
+    elif id.startswith("D"):
+        return true
+    else:
+        print("is_private encountered unhandled ID")
+        return true
+
 
 def send_reply(text, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
@@ -80,4 +100,3 @@ def call_dictionary(word):
         return response
     else:
         print("Encountered error while trying to call dictionary API")
-
