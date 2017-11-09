@@ -62,9 +62,9 @@ def check_user_text(text, channel, message_data, testing_mode):
     unique_words = set(words)
     karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
-    karma = karma_regex.search(text);
-    if karma:
-        handle_karma_change(karma, channel, message_data)
+    karma = karma_regex.findall(text);
+    for result in karma:
+        handle_karma_change(result, channel, message_data)
 
     for word in list(unique_words):
         if word in defined_words:
@@ -146,8 +146,8 @@ def handle_command(text, channel, message_data):
     return True
 
 def handle_karma_change(karma, channel, message_data):
-    key = karma.group(1).lower()
-    operator = karma.group(2)
+    key = karma[0].lower()
+    operator = karma[1]
     delta = len(operator) - 1
     response = (to_upper_if_tag(key)) + "'s karma has "
 
@@ -183,7 +183,7 @@ def handle_karma(text, channel):
 
     karma = dao.get_karma(key)
 
-    if not karma:
+    if karma == None:
         response += " has no karma score!"
     else:
         response += "'s karma is " + str(karma)
