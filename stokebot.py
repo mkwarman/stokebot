@@ -62,9 +62,9 @@ def check_user_text(text, channel, message_data, testing_mode):
     unique_words = set(words)
     karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
-    karma = karma_regex.search(text);
-    if karma:
-        handle_karma_change(karma, channel, message_data)
+    karma = karma_regex.findall(text);
+    for result in karma:
+        handle_karma_change(result, channel, message_data)
 
     for word in list(unique_words):
         if word in defined_words:
