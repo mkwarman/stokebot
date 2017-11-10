@@ -61,7 +61,7 @@ def get_conversation_id(conversation_name):
     if api_call.get('ok'):
         conversations = api_call.get('channels')
         for conversation in conversations:
-            if 'name' in conversation and conversation.get('name') == channel_name:
+            if 'name' in conversation and conversation.get('name') == conversation_name:
                 print("Got channel id for conversation: " + conversation_name + " (" + conversation.get('id') + ")")
                 return conversation.get('id')
 
