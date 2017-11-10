@@ -55,15 +55,15 @@ def get_channel_name(channel_id):
 #                print("Got channel id for channel: " + channel_name + " (" + channel.get('id') + ")")
 #                return channel.get('id')
 
-def get_conversation_id(conversation_name):
-    print("conversation_name: " + conversation_name)
-    api_call = slack_client.api_call("conversations.list")
-    if api_call.get('ok'):
-        conversations = api_call.get('channels')
-        for conversation in conversations:
-            if 'name' in conversation and conversation.get('name') == conversation_name:
-                print("Got channel id for conversation: " + conversation_name + " (" + conversation.get('id') + ")")
-                return conversation.get('id')
+#def get_conversation_id(conversation_name):
+#    print("conversation_name: " + conversation_name)
+#    api_call = slack_client.api_call("conversations.list")
+#    if api_call.get('ok'):
+#        conversations = api_call.get('channels')
+#        for conversation in conversations:
+#            if 'name' in conversation and conversation.get('name') == conversation_name:
+#                print("Got channel id for conversation: " + conversation_name + " (" + conversation.get('id') + ")")
+#                return conversation.get('id')
 
 def get_group_name(group_id):
     print("group_id: " + group_id)

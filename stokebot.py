@@ -15,7 +15,7 @@ BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
 TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
-TESTING_CHANNELS = ("bottest", "bottest_private", "bottest_public")
+TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -43,14 +43,12 @@ global at_target_user_id
 global defined_words
 global blacklisted_words
 global ignored_users
-global testing_channel_ids
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
-    print("User: " + message_data['user'])
     bot_match = "<@" + at_bot_id + ">"
     if (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
         print("Received command: " + text)
@@ -530,14 +528,8 @@ def to_upper_if_tag(text):
     return text
 
 def print_if_testing(print_text, message_data):
-    if (message_data['channel'] in testing_channel_ids):
+    if (message_data['channel'] in TESTING_CHANNEL_IDS):
         print(print_text)
-
-def populate_testing_channels():
-    channel_ids = []
-    for channel in TESTING_CHANNELS:
-        channel_ids.append(api.get_conversation_id(channel))
-    return channel_ids
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
@@ -557,11 +549,9 @@ if __name__ == "__main__":
                 defined_words = dao.get_defined_words()
                 blacklisted_words = dao.get_blacklisted_words()
                 ignored_users = dao.get_ignored_user_ids()
-                testing_channel_ids = populate_testing_channels()
                 print("Got all defined words: " + str(defined_words))
                 print("Got all blacklisted words: " + str(blacklisted_words))
                 print("Got all blacklisted users: " + str(ignored_users))
-                print("Got all testing channels: " + str(testing_channel_ids))
 
                 while run:
                     text, channel, message_data = listen_for_text(slack_client.rtm_read())
