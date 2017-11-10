@@ -354,3 +354,18 @@ def get_karma(key):
         return karma[0]
     else:
         return None
+
+def get_top_karma(limit):
+    """ get top karma entities limited by parameter """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT * FROM karma ORDER BY karma DESC LIMIT ?; '''
+
+    data = (limit, )
+    cursor.execute(sql, data)
+
+    rows = cursor.fetchall()
+
+    return [(row[0], row[1]) for row in rows]
+

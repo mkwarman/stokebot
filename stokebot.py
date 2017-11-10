@@ -33,6 +33,8 @@ LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
 
 MAX_KARMA_CHANGE = 10
+TOP_KARMA_SUBCOMMAND = "top"
+TOP_KARMA_LIMIT = 5
 
 # globals
 global at_bot_id
@@ -179,6 +181,10 @@ def handle_karma_change(karma, channel, message_data):
 def handle_karma(text, channel):
     key = text.split(" ")[1]
 
+    if key == TOP_KARMA_SUBCOMMAND:
+        handle_top_karma(channel)
+        return
+
     response = to_upper_if_tag(key)
 
     karma = dao.get_karma(key)
@@ -187,6 +193,14 @@ def handle_karma(text, channel):
         response += " has no karma score!"
     else:
         response += "'s karma is " + str(karma)
+
+    api.send_reply(response, channel)
+
+def handle_top_karma(channel):
+    response = "Top karma entries:"
+    top_karma_entities = dao.get_top_karma(TOP_KARMA_LIMIT)
+    for entity in top_karma_entities:
+        response += ("\n" + to_upper_if_tag(entity[0]) + ": " + str(entity[1]))
 
     api.send_reply(response, channel)
 
