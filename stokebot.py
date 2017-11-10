@@ -15,6 +15,7 @@ BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
 TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
+TESTING_CHANNELS("bottest", "bottest_private", "bottest_public")
 
 ADD_COMMAND = ("add")
 BLACKLIST_COMMAND = ("blacklist")
@@ -42,6 +43,7 @@ global at_target_user_id
 global defined_words
 global blacklisted_words
 global ignored_users
+global testing_channel_ids
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -60,7 +62,9 @@ def handle_text(text, channel, message_data):
 
 def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
+    print_if_testing("About to sanitize and split:\n" + text, message_data)
     words = word_check.sanitize_and_split_words(text)
+    print_if_testing("Got words: " + words, message_data)
     unique_words = set(words)
     karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
@@ -84,11 +88,12 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     if ('user' in message_data and at_target_user_id in message_data['user']) or testing_mode:
-    #    print("Target user said: " + text)
+        print_if_testing("Target user said: " + text, message_data)
         handle_target_user_text(unique_words, channel, message_data, testing_mode)
 
 def handle_target_user_text(words, channel, message_data, testing_mode):
     unknown_words = word_check.find_unknown_words(words)
+    print_if_testing("Found unknown words: " + unknown_words, message_data)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
         if not word_check.check_dictionary(word):
@@ -524,6 +529,14 @@ def to_upper_if_tag(text):
 
     return text
 
+def print_if_testing(print_text, message_data):
+    if (testing_channel_ids.indexof(message_data['channel']) != -1):
+        print(print_text)
+
+def populate_testing_channels():
+    for channel in TESTING_CHANNELS:
+        testing_channel_ids.append(api.get_conversation_id(channel))
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     run = True
@@ -541,9 +554,11 @@ if __name__ == "__main__":
                 defined_words = dao.get_defined_words()
                 blacklisted_words = dao.get_blacklisted_words()
                 ignored_users = dao.get_ignored_user_ids()
+                populate_testing_channels()
                 print("Got all defined words: " + str(defined_words))
                 print("Got all blacklisted words: " + str(blacklisted_words))
                 print("Got all blacklisted users: " + str(ignored_users))
+                print("Got all testing channels: " + str(testing_channel_ids))
 
                 while run:
                     text, channel, message_data = listen_for_text(slack_client.rtm_read())

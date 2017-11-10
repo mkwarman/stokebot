@@ -45,6 +45,26 @@ def get_channel_name(channel_id):
             print("Got target channel name for '" + channel['id'] + "': " + channel.get('name'))
             return channel.get('name')
 
+#def get_channel_id(channel_name):
+#    print("channel_name: " + channel_name)
+#    api_call = slack_client.api_call("channels.list")
+#    if api_call.get('ok'):
+#        channels = api_call.get('channels')
+#        for channel in channels:
+#            if 'name' in channel and channel.get('name') == channel_name:
+#                print("Got channel id for channel: " + channel_name + " (" + channel.get('id') + ")")
+#                return channel.get('id')
+
+def get_conversation_id(conversation_name):
+    print("conversation_name: " + conversation_name)
+    api_call = slack_client.api_call("conversations.list")
+    if api_call.get('ok'):
+        conversations = api_call.get('channels')
+        for conversation in conversations:
+            if 'name' in conversation and conversation.get('name') == channel_name:
+                print("Got channel id for conversation: " + conversation_name + " (" + conversation.get('id') + ")")
+                return conversation.get('id')
+
 def get_group_name(group_id):
     print("group_id: " + group_id)
     api_call = slack_client.api_call("groups.info", channel=group_id)
@@ -67,6 +87,16 @@ def get_name_from_id(input_id):
     else:
         print("get_name_from_id encountered unhandled ID")
         return "unknown"
+
+#def get_id_from_name(input_name):
+#    print("get_id_from_name: " + input_name)
+#    #if input_name.startswith("U"):
+#    #    return get_user_name(input_name)
+#    channel_id = get_channel_id(input_name)
+#    if channel_id:
+#        return channel_id
+#    else:
+#        return get_group_id(input_name)
 
 def is_private_channel(channel_id):
     api_call = slack_client.api_call("channels.info", channel=channel_id)
