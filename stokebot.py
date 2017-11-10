@@ -15,9 +15,10 @@ BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
 TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
-POSSESSIVE_DENOTION = "possessive"
-REPLY_DENOTION = "reply"
-ACTION_DENOTION = "action"
+POSSESSIVE_DENOTION = "<possessive>"
+REPLY_DENOTION = "<reply>"
+ACTION_DENOTION = "<action>"
+TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
 ADD_COMMAND = ("add")
 MEANS_COMMAND = (" means ")
@@ -26,6 +27,7 @@ ARE_COMMAND = (" are ")
 READ_COMMAND = ("what is", "define")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
+KARMA_COMMAND = ("karma")
 STATUS_COMMAND = ("status")
 #SHOW_ALL_COMMAND = ("showall", "show all", "show all definitions", "show all words")
 DELETE_COMMAND = ("delete")
@@ -40,6 +42,9 @@ CHECK_COMMAND = ("check")
 POSSESSIVE_MATCH = ("'s")
 REPLY_MATCH = ("reply")
 ACTION_MATCH = ("action")
+MAX_KARMA_CHANGE = 10
+TOP_KARMA_SUBCOMMAND = "top"
+TOP_KARMA_LIMIT = 5
 
 # globals
 global at_bot_id
@@ -53,8 +58,8 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
-    print("User: " + message_data['user'])
-    if text.startswith("<@" + at_bot_id + ">"):
+    bot_match = "<@" + at_bot_id + ">"
+    if (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:
@@ -64,9 +69,15 @@ def handle_text(text, channel, message_data):
 
 def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
+    print_if_testing("About to sanitize and split:\n" + text, message_data)
     words = word_check.sanitize_and_split_words(text)
+    print_if_testing("Got words: " + str(words), message_data)
     unique_words = set(words)
+    karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
+    karma = karma_regex.findall(text);
+    for result in karma:
+        handle_karma_change(result, channel, message_data)
 
     for word in list(unique_words):
         if word in defined_words:
@@ -84,11 +95,12 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     if ('user' in message_data and at_target_user_id in message_data['user']) or testing_mode:
-        print("Target user said: " + text)
+        print_if_testing("Target user said: " + text, message_data)
         handle_target_user_text(unique_words, channel, message_data, testing_mode)
 
 def handle_target_user_text(words, channel, message_data, testing_mode):
     unknown_words = word_check.find_unknown_words(words)
+    print_if_testing("Found unknown words: " + str(unknown_words), message_data)
     for word in unknown_words:
         print("About to check_dictionary for \"" + word + "\"")
         if not word_check.check_dictionary(word):
@@ -135,6 +147,8 @@ def handle_command(text, channel, message_data):
 #        handle_show_all(channel)
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
+    elif command.startswith(KARMA_COMMAND):
+        handle_karma(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
     elif command.startswith(IGNORE_COMMAND):
@@ -179,6 +193,63 @@ def handle_explicit_relation(command, channel, message_data, relation):
         relation = stripped_relation
 
     add_definition(x, relation, y, channel, message_data)
+
+def handle_karma_change(karma, channel, message_data):
+    key = karma[0].lower()
+    operator = karma[1]
+    delta = len(operator) - 1
+    response = (to_upper_if_tag(key)) + "'s karma has "
+
+    if (key == "<@" + message_data['user'].lower() + ">"):
+        # Don't let users vote on themselves
+        if (operator[0] == '+'):
+            response = "It's rude to toot your own horn."
+        else:
+            response = "Don't be so hard on yourself!"
+        api.send_reply(response, channel)
+        return
+
+    if (delta > MAX_KARMA_CHANGE):
+        api.send_reply("Max karma change of 10 points enforced!", channel)
+        delta = 10
+
+    if (operator[0] == '+'):
+        response += "increased"
+    else:
+        delta = -delta
+        response += "decreased"
+
+    dao.update_karma(key, delta)
+
+    response += " to " + str(dao.get_karma(key))
+
+    api.send_reply(response, channel)
+
+def handle_karma(text, channel):
+    key = text.split(" ")[1]
+
+    if key == TOP_KARMA_SUBCOMMAND:
+        handle_top_karma(channel)
+        return
+
+    response = to_upper_if_tag(key)
+
+    karma = dao.get_karma(key)
+
+    if karma == None:
+        response += " has no karma score!"
+    else:
+        response += "'s karma is " + str(karma)
+
+    api.send_reply(response, channel)
+
+def handle_top_karma(channel):
+    response = "Top karma entries:"
+    top_karma_entities = dao.get_top_karma(TOP_KARMA_LIMIT)
+    for entity in top_karma_entities:
+        response += ("\n" + to_upper_if_tag(entity[0]) + ": " + str(entity[1]))
+
+    api.send_reply(response, channel)
 
 def handle_check(command, channel, message_data):
     text = command[6:]
@@ -324,6 +395,10 @@ def handle_read_definition(command, channel, message_data):
     # Reply definitions from the database
     reply_definitions(definitions, channel)
 
+def handle_secondary_add_definition(command, channel, message_data):
+    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    command_data = command.split(" ")
+
 def handle_multi(command, channel, message_data, command_root):
     command_data = command.split(command_root)
     x = command_data[0].strip()
@@ -364,10 +439,147 @@ def add_definition(word, relation, meaning, channel, message_data):
     # Send definition object to database
     dao.insert_definition(definition_object)
 
+def handle_blacklist(command, channel, message_data):
+    if api.is_admin(message_data['user']):
+        sub_command = command[10:]
+        print("sub_command: " + sub_command)
+        if sub_command.startswith("add"):
+            # add to blacklist
+            blacklist_add(sub_command[4:], channel, message_data)
+        elif sub_command.startswith("get"):
+            # read from blacklist
+            blacklist_read(sub_command[4:], channel, message_data)
+        elif sub_command.startswith("delete"):
+            # delete from blacklist
+            blacklist_delete(sub_command[7:], channel, message_data)
+        elif sub_command.startswith("showall"):
+            # show full blacklist
+            blacklist_showall(channel)
+        else:
+            api.send_reply("Try \"backlist add\", \"backlist get\", \"backlist delete\", or \"blacklist showall\"", channel)
+
+    else:
+        api.send_reply("Sorry <@" +message_data['user'] + ">, only admins can edit the blacklist.", channel)
+
+def blacklist_add(word, channel, message_data):
+    print("in blacklist_add, word: " + word)
+
+    # Instantiate blacklist object
+    blacklisted_object = blacklisted_model.Blacklisted()
+
+    user_name = api.get_user_name(message_data['user'])
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    blacklisted_object.new(word, user_name, channel_name)
+
+    dao.insert_blacklisted(blacklisted_object)
+    blacklisted_words.append(word)
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
+
+def blacklist_read(word, channel, message_data):
+    blacklisted = dao.get_blacklisted_by_word(word)
+
+    print(blacklisted)
+    api.send_reply(str(blacklisted), channel)
+
+def blacklist_delete(blacklisted_id, channel, message_data):
+    blacklisted = dao.get_blacklisted_by_id(blacklisted_id)
+    if not blacklisted:
+        api.send_reply("ID " + blacklisted_id + " does not exist.", channel)
+        return
+    dao.delete_blacklisted_by_id(blacklisted_id)
+    blacklisted_words.remove(blacklisted.word)
+
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)
+
+def blacklist_showall(channel):
+    blacklist = dao.select_all_blacklisted()
+
+    for blacklisted in blacklist:
+        print(str(blacklisted))
+        api.send_reply(str(blacklisted), channel)
+
 def reply_definitions(definitions, channel):
     for definition in definitions:
         print("sending " + str(definition) + " to " + channel)
         api.send_reply(("*" + definition.word + "* means _" + definition.meaning + "_"), channel)
+
+def handle_ignore(command, channel, message_data):
+    user_name = command[7:]
+    user_id = ""
+
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    if not (user_id and user_name):
+        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[7:] + "\"", channel)
+        return
+
+    user_object = user_model.User()
+    user_object.new(user_id, user_name, channel_name)
+
+    reply = ("Ok <@" + message_data['user'] + ">, I will ignore " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">") + " (except commands)")
+
+    if user_id not in ignored_users:
+        dao.insert_ignored_user(user_object)
+        ignored_users.append(user_id)
+    else:
+        print("user already in ignored_users, ignoring...")
+
+    api.send_reply(reply, channel)
+
+    print("new ignored_users: " + str(ignored_users))
+
+def handle_listen(command, channel, message_data):
+    user_name = command[10:]
+    user_id = ""
+
+    if user_name == "me":
+        user_name = api.get_user_name(message_data['user'])
+    elif user_name.startswith("<@"):
+        user_id = user_name[2:-1].upper()
+        user_name = api.get_user_name(user_id)
+
+    if not user_id:
+        user_id = api.get_user_id(user_name)
+
+    if not (user_id and user_name):
+        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[10:] + "\"", channel)
+        return
+
+    reply = ("Ok <@" + message_data['user'] + ">, I will listen to " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">"))
+
+    if user_id in ignored_users:
+        dao.delete_ignored_by_user_id(user_id)
+        ignored_users.remove(user_id)
+    else:
+        print("user not in ignored_users, ignoring...")
+
+    api.send_reply(reply, channel)
+
+    print("new ignored_users: " + str(ignored_users))
+
+def to_upper_if_tag(text):
+    tag_check = re.compile(r'(<(?:@|#)[^ ]+>)')
+    search_result = tag_check.search(text)
+
+    if search_result:
+        tag = search_result.group(1)
+        text = text.replace(tag, tag.upper())
+
+    return text
+
+def print_if_testing(print_text, message_data):
+    if (message_data['channel'] in TESTING_CHANNEL_IDS):
+        print(print_text)
 
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
@@ -381,6 +593,7 @@ if __name__ == "__main__":
                 global defined_words
                 global blacklisted_words
                 global ignored_users
+                global testing_channel_ids
                 at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
                 at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
                 defined_words = dao.get_defined_words()

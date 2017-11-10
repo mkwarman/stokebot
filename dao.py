@@ -316,3 +316,56 @@ def increment_word_usage_count(word, times_used):
 
     cursor.close()
     connection.close()
+
+def update_karma(key, delta):
+    """ Add or remove entity karma """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql_insert = ''' INSERT OR IGNORE INTO karma(key, karma) VALUES(?, 0) '''
+    sql_update = ''' UPDATE karma SET karma=karma+? WHERE key LIKE ?; '''
+
+    data_insert = (key, )
+    data_update = (delta, key)
+
+    cursor.execute(sql_insert, data_insert)
+    cursor.execute(sql_update, data_update)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_karma(key):
+    """ get entity karma """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT karma FROM karma WHERE key=? '''
+
+    data = (key, )
+    cursor.execute(sql, data)
+
+    karma = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if karma:
+        return karma[0]
+    else:
+        return None
+
+def get_top_karma(limit):
+    """ get top karma entities limited by parameter """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT * FROM karma ORDER BY karma DESC LIMIT ?; '''
+
+    data = (limit, )
+    cursor.execute(sql, data)
+
+    rows = cursor.fetchall()
+
+    return [(row[0], row[1]) for row in rows]
+
