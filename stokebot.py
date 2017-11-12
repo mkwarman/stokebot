@@ -3,6 +3,7 @@ import time
 import definition_model
 import blacklist
 import ignored
+import item
 import dao
 import api
 import word_check
@@ -15,6 +16,7 @@ BOT_OWNER_NAME = os.environ.get('BOT_OWNER_NAME')#"mkwarman"
 TARGET_USER_NAME = os.environ.get('TARGET_USER_NAME')#"austoke"
 READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
 CONNECTION_ATTEMPT_RETRY_DELAY = 1
+MAX_HELD_ITEMS = 5
 POSSESSIVE_DENOTION = "<possessive>"
 REPLY_DENOTION = "<reply>"
 ACTION_DENOTION = "<action>"
@@ -33,6 +35,8 @@ ACTION_TRIGGER = ("action")
 MEANS_TRIGGER = (" means ")
 IS_TRIGGER = (" is ")
 ARE_TRIGGER = (" are ")
+GIVES_TRIGGER = ("gives")
+TAKES_TRIGGER = ("takes")
 
 # Commands
 ADD_COMMAND = ("add")
@@ -40,6 +44,7 @@ MEANS_COMMAND = ("means")
 IS_COMMAND = ("is")
 ARE_COMMAND = ("are")
 READ_COMMAND = ("what is", "define")
+LIST_ITEMS_COMMAND = ("list items")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
 KARMA_COMMAND = ("karma")
@@ -65,9 +70,10 @@ TOP_KARMA_LIMIT = 5
 global defined_words
 global blacklisted_words
 global ignored_users
+global held_items
 
 # Regexs
-CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
+ITEM_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
 # instantiate Slack & Twilio clients
@@ -75,11 +81,11 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
-    container_operation = CONTAINER_REGEX.search(text)
+    item_operation = ITEM_REGEX.search(text)
 
     # Container operations are singular, so we don't need to look for other matches
-    if (container_operation):
-        handle_container_operation(container_operation)
+    if (item_operation):
+        item.handle_item_operation(item_operation, GIVES_TRIGGER, MAX_HELD_ITEMS, held_items, channel, message_data)
     elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
@@ -165,6 +171,8 @@ def handle_command(text, channel, message_data):
         handle_multi(command, channel, message_data, ARE_COMMAND)
 #    elif command in SHOW_ALL_COMMAND:
 #        handle_show_all(channel)
+    elif command == LIST_ITEMS_COMMAND:
+        item.list_items(channel, held_items)
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
     elif command.startswith(KARMA_COMMAND):
@@ -187,11 +195,6 @@ def handle_command(text, channel, message_data):
         handle_unknown_command(channel)
 
     return True
-
-def handle_container_operation(container_operation):
-    operation = container_operation.group(1)
-    item = container_operation.group(2) or container_operation.group(3)
-    print("Got operation: \"" + operation + "\" and item: \"" + item + "\"")
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")
@@ -465,66 +468,6 @@ def add_definition(word, relation, meaning, channel, message_data):
     # Send definition object to database
     dao.insert_definition(definition_object)
 
-def handle_blacklist(command, channel, message_data):
-    if api.is_admin(message_data['user']):
-        sub_command = command[10:]
-        print("sub_command: " + sub_command)
-        if sub_command.startswith("add"):
-            # add to blacklist
-            blacklist_add(sub_command[4:], channel, message_data)
-        elif sub_command.startswith("get"):
-            # read from blacklist
-            blacklist_read(sub_command[4:], channel, message_data)
-        elif sub_command.startswith("delete"):
-            # delete from blacklist
-            blacklist_delete(sub_command[7:], channel, message_data)
-        elif sub_command.startswith("showall"):
-            # show full blacklist
-            blacklist_showall(channel)
-        else:
-            api.send_reply("Try \"backlist add\", \"backlist get\", \"backlist delete\", or \"blacklist showall\"", channel)
-
-    else:
-        api.send_reply("Sorry <@" +message_data['user'] + ">, only admins can edit the blacklist.", channel)
-
-def blacklist_add(word, channel, message_data):
-    print("in blacklist_add, word: " + word)
-
-    # Instantiate blacklist object
-    blacklisted_object = blacklisted_model.Blacklisted()
-
-    user_name = api.get_user_name(message_data['user'])
-    channel_name = api.get_name_from_id(message_data['channel'])
-
-    blacklisted_object.new(word, user_name, channel_name)
-
-    dao.insert_blacklisted(blacklisted_object)
-    blacklisted_words.append(word)
-    api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
-
-def blacklist_read(word, channel, message_data):
-    blacklisted = dao.get_blacklisted_by_word(word)
-
-    print(blacklisted)
-    api.send_reply(str(blacklisted), channel)
-
-def blacklist_delete(blacklisted_id, channel, message_data):
-    blacklisted = dao.get_blacklisted_by_id(blacklisted_id)
-    if not blacklisted:
-        api.send_reply("ID " + blacklisted_id + " does not exist.", channel)
-        return
-    dao.delete_blacklisted_by_id(blacklisted_id)
-    blacklisted_words.remove(blacklisted.word)
-
-    api.send_reply("Ok <@" + message_data['user'] + ">, I've removed " + blacklisted.word + " from the blacklist", channel)
-
-def blacklist_showall(channel):
-    blacklist = dao.select_all_blacklisted()
-
-    for blacklisted in blacklist:
-        print(str(blacklisted))
-        api.send_reply(str(blacklisted), channel)
-
 def reply_definitions(definitions, channel):
     for definition in definitions:
         print("sending " + str(definition) + " to " + channel)
@@ -554,69 +497,6 @@ def handle_special_relation(definition):
         # Given: X | Reply: X [relation] Y
         return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)
 
-def handle_ignore(command, channel, message_data):
-    user_name = command[7:]
-    user_id = ""
-
-    if user_name == "me":
-        user_name = api.get_user_name(message_data['user'])
-    elif user_name.startswith("<@"):
-        user_id = user_name[2:-1].upper()
-        user_name = api.get_user_name(user_id)
-
-    if not user_id:
-        user_id = api.get_user_id(user_name)
-
-    channel_name = api.get_name_from_id(message_data['channel'])
-
-    if not (user_id and user_name):
-        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[7:] + "\"", channel)
-        return
-
-    user_object = user_model.User()
-    user_object.new(user_id, user_name, channel_name)
-
-    reply = ("Ok <@" + message_data['user'] + ">, I will ignore " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">") + " (except commands)")
-
-    if user_id not in ignored_users:
-        dao.insert_ignored_user(user_object)
-        ignored_users.append(user_id)
-    else:
-        print("user already in ignored_users, ignoring...")
-
-    api.send_reply(reply, channel)
-
-    print("new ignored_users: " + str(ignored_users))
-
-def handle_listen(command, channel, message_data):
-    user_name = command[10:]
-    user_id = ""
-
-    if user_name == "me":
-        user_name = api.get_user_name(message_data['user'])
-    elif user_name.startswith("<@"):
-        user_id = user_name[2:-1].upper()
-        user_name = api.get_user_name(user_id)
-
-    if not user_id:
-        user_id = api.get_user_id(user_name)
-
-    if not (user_id and user_name):
-        api.send_reply("Sorry <@" + message_data['user'] + ">, I couldn't find user \"" + command[10:] + "\"", channel)
-        return
-
-    reply = ("Ok <@" + message_data['user'] + ">, I will listen to " + ("you" if message_data['user'] == user_id else "<@" + user_name + ">"))
-
-    if user_id in ignored_users:
-        dao.delete_ignored_by_user_id(user_id)
-        ignored_users.remove(user_id)
-    else:
-        print("user not in ignored_users, ignoring...")
-
-    api.send_reply(reply, channel)
-
-    print("new ignored_users: " + str(ignored_users))
-
 def to_upper_if_tag(text):
     tag_check = re.compile(r'(<(?:@|#)[^ ]+>)')
     search_result = tag_check.search(text)
@@ -645,9 +525,11 @@ if __name__ == "__main__":
                 defined_words = dao.get_defined_words()
                 blacklisted_words = dao.get_blacklisted_words()
                 ignored_users = dao.get_ignored_user_ids()
+                held_items = dao.get_items()
                 print("Got all defined words: " + str(defined_words))
                 print("Got all blacklisted words: " + str(blacklisted_words))
                 print("Got all blacklisted users: " + str(ignored_users))
+                print("Got all held items: " + str(held_items))
 
                 while run:
                     text, channel, message_data = listen_for_text(slack_client.rtm_read())
