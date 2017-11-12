@@ -291,6 +291,7 @@ def handle_help(channel):
                + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered"\
                + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered"\
                + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered"\
+               + ">`/me gives/takes [item] to/from @stokebot` --- Stokebot will take from or give you \"item\""\
                + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
                + "listen to commands\n" \
                + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
