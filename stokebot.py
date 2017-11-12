@@ -20,10 +20,19 @@ REPLY_DENOTION = "<reply>"
 ACTION_DENOTION = "<action>"
 TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
+# Triggers
+POSSESSIVE_TRIGGERS = ("’s","'s")
+REPLY_TRIGGER = ("reply")
+ACTION_TRIGGER = ("action")
+MEANS_TRIGGER = (" means ")
+IS_TRIGGER = (" is ")
+ARE_TRIGGER = (" are ")
+
+# Commands
 ADD_COMMAND = ("add")
-MEANS_COMMAND = (" means ")
-IS_COMMAND = (" is ")
-ARE_COMMAND = (" are ")
+MEANS_COMMAND = ("means")
+IS_COMMAND = ("is")
+ARE_COMMAND = ("are")
 READ_COMMAND = ("what is", "define")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
@@ -137,11 +146,11 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
-    elif MEANS_COMMAND in command:
+    elif MEANS_TRIGGER in command:
         handle_multi(command, channel, message_data, MEANS_COMMAND)
-    elif IS_COMMAND in command:
+    elif IS_TRIGGER in command:
         handle_multi(command, channel, message_data, IS_COMMAND)
-    elif ARE_COMMAND in command:
+    elif ARE_TRIGGER in command:
         handle_multi(command, channel, message_data, ARE_COMMAND)
 #    elif command in SHOW_ALL_COMMAND:
 #        handle_show_all(channel)
@@ -183,11 +192,11 @@ def handle_explicit_relation(command, channel, message_data, relation):
     y = command_data[1].strip()
     stripped_relation = relation[4:-4]
 
-    if stripped_relation == "'s":
+    if stripped_relation in POSSESSIVE_TRIGGERS:
         relation = POSSESSIVE_DENOTION
-    elif stripped_relation == "reply":
+    elif stripped_relation == REPLY_TRIGGER:
         relation = REPLY_DENOTION
-    elif stripped_relation == "action":
+    elif stripped_relation == ACTION_TRIGGER:
         relation = ACTION_DENOTION
     else:
         relation = stripped_relation
@@ -257,9 +266,11 @@ def handle_check(command, channel, message_data):
 
 def handle_help(channel):
     response = "Basic Commands:\n" \
-               + ">`@stokebot add [word]: [meaning]` --- Use this command to add a definition to the database\n" \
-               + ">`@stokebot [word] means [meaning]` --- Use this command to add a definition to the database\n" \
-               + ">`@stokebot (define/what is) [word]` --- Use this command to look up a word in the database\n" \
+               + ">`@stokebot X is/are Y` --- Stokebot will reply \"X is/are Y\" when X is triggered"\
+               + ">`@stokebot X means Y` --- Stokebot will reply \"X means Y\" with definition format when X is triggered\n" \
+               + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered"\
+               + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered"\
+               + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered"\
                + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
                + "listen to commands\n" \
                + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
@@ -403,9 +414,8 @@ def handle_multi(command, channel, message_data, command_root):
     command_data = command.split(command_root)
     x = command_data[0].strip()
     y = command_data[1].strip()
-    relation = command_root.strip()
 
-    add_definition(x, relation, y, channel, message_data)
+    add_definition(x, command_root, y, channel, message_data)
 
 
 def handle_add_definition(command, channel, message_data):
@@ -502,7 +512,31 @@ def blacklist_showall(channel):
 def reply_definitions(definitions, channel):
     for definition in definitions:
         print("sending " + str(definition) + " to " + channel)
-        api.send_reply(("*" + definition.word + "* means _" + definition.meaning + "_"), channel)
+        if "<" in definition.relation:
+            response = handle_special_relation(definition)
+        elif (definition.relation == MEANS_COMMAND):
+            # Add definition formatting
+            response = ("*" + definition.word + "* " + definition.relation + " _" + definition.meaning + "_")
+        else:
+            response = (definition.word + " " + definition.relation + " " + definition.meaning)
+
+        api.send_reply(response, channel)
+
+def handle_special_relation(definition):
+    print("Found special relation: " + definition.relation)
+    if definition.relation == POSSESSIVE_DENOTION:
+        # Given: X | Reply: X's Y
+        return (definition.word + "'s " + definition.meaning)
+    elif definition.relation == REPLY_DENOTION:
+        # Given: X | Reply: Y
+        return definition.meaning
+    elif definition.relation == ACTION_DENOTION:
+        # Given: X | Reply: /me Y
+        #api.send_command("/me", definition.meaning, channel)
+        return ("_" + definition.meaning + "_")
+    else:
+        # Given: X | Reply: X [relation] Y
+        return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)
 
 def handle_ignore(command, channel, message_data):
     user_name = command[7:]

@@ -122,6 +122,10 @@ def send_reply(text, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
                           text=text, as_user=True)
 
+#def send_command(command, text, channel):
+#    response = slack_client.api_call("chat.command", command=command, text=text, channel=channel, as_user=True)
+#    print("command reply: " + str(response))
+
 def call_dictionary(word):
     url = ('http://www.dictionaryapi.com/api/v1/references/collegiate/xml/%s?key=%s' %(word, dictionary_api_key))
     print(url)
