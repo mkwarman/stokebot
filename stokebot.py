@@ -8,6 +8,7 @@ import dao
 import api
 import word_check
 import re
+import traceback
 from slackclient import SlackClient
 
 # constants
@@ -172,7 +173,7 @@ def handle_command(text, channel, message_data):
 #    elif command in SHOW_ALL_COMMAND:
 #        handle_show_all(channel)
     elif command == LIST_ITEMS_COMMAND:
-        item.list_items(channel, held_items)
+        item.list_items(held_items, channel)
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
     elif command.startswith(KARMA_COMMAND):
@@ -545,6 +546,6 @@ if __name__ == "__main__":
             print ("Stopping...")
             quit()
         except Exception as e:
-            print ("Encountered error: " + str(e))
+            print ("Encountered error: " + str(e) + "\nTraceback:\n" + traceback.format_exc())
 
         time.sleep(CONNECTION_ATTEMPT_RETRY_DELAY)

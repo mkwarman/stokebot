@@ -430,7 +430,7 @@ def delete_item_by_name(item_name):
     cursor = connection.cursor()
     sql = ''' DELETE FROM items WHERE name=? '''
 
-    data = (user_id, )
+    data = (item_name, )
     cursor.execute(sql, data)
     connection.commit()
 
@@ -442,7 +442,7 @@ def swap_items(new_item_model):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql_get = ''' SELECT id, item, user, channel, date_time_added FROM definitions ORDER BY date_time_added ASC LIMIT 1 '''
+    sql = ''' SELECT id, name, user_name, channel, date_time_added FROM items ORDER BY date_time_added ASC LIMIT 1 '''
 
     # Get oldest item
     cursor.execute(sql)
