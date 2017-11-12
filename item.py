@@ -26,7 +26,7 @@ def handle_give(item_name, held_items, max_held_items, channel, message_data):
         # We can't hold any more items, so we'll have to hand an old one back
         old_item = dao.swap_items(new_item)
         held_items.remove(old_item.name)
-        response = ("_takes *" + item_name + "* from " + user_name + " and hands them *" + old_item.name + "*_")
+        response = ("_takes *" + item_name + "* from " + user_name + " and gives them *" + old_item.name + "*_")
 
     held_items.append(item_name)
 
