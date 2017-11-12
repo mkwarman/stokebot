@@ -20,6 +20,11 @@ REPLY_DENOTION = "<reply>"
 ACTION_DENOTION = "<action>"
 TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
+AT_BOT_ID = api.get_user_id(BOT_NAME) # Get the bot's ID
+BOT_MATCH = "<@" + AT_BOT_ID + ">"
+AT_TARGET_USER_ID = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
+
+
 # Triggers
 POSSESSIVE_TRIGGERS = ("’s","'s")
 REPLY_TRIGGER = ("reply")
@@ -60,12 +65,8 @@ global defined_words
 global blacklisted_words
 global ignored_users
 
-global at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
-global bot_match = "<@" + at_bot_id + ">"
-global at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
-
 # Regexs
-CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) ' + re.escape(bot_match) + ')|(?:' + re.escape(bot_match) + ') (.+))$')
+CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) ' + re.escape(BOT_MATCH) + ')|(?:' + re.escape(BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
 # instantiate Slack & Twilio clients
@@ -79,7 +80,7 @@ def handle_text(text, channel, message_data):
     if (container_operation):
         handle_container_operation(container_operation)
         return
-    elif (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
+    elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:
@@ -113,7 +114,7 @@ def check_user_text(text, channel, message_data, testing_mode):
             print("Found \"" + word + "\" in blacklisted_words")
             unique_words.remove(word)
 
-    if ('user' in message_data and at_target_user_id in message_data['user']) or testing_mode:
+    if ('user' in message_data and AT_TARGET_USER_ID in message_data['user']) or testing_mode:
         print_if_testing("Target user said: " + text, message_data)
         handle_target_user_text(unique_words, channel, message_data, testing_mode)
 
@@ -141,7 +142,7 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
     print("In handle_command")
-    command = text.split(bot_match)[1].strip().lower()
+    command = text.split(BOT_MATCH)[1].strip().lower()
     print("Parsed command: " + command)
 
     relation = check_for_explicit_relation(command)
@@ -300,7 +301,7 @@ def handle_help(channel):
 
 def handle_say(text, channel, message_data):
     print("In handle_say")
-    raw_phrase = text.split(bot_match)[1].strip()[4:]
+    raw_phrase = text.split(BOT_MATCH)[1].strip()[4:]
     # Extract just the phrase from the command
     #phrase = command[len([command_text for command_text in SAY_COMMAND if command.startswith(command_text)][0]):].strip()
     phrase_data = raw_phrase.lower().split(" ")
@@ -393,16 +394,16 @@ def listen_for_text(slack_rtm_output):
     output_list = slack_rtm_output
     if output_list and len(output_list) > 0:
         for output in output_list:
-            #if output and 'text' in output and 'user' in output and at_target_user_id in output['user']:
+            #if output and 'text' in output and 'user' in output and AT_TARGET_USER_ID in output['user']:
             # If there is text present, but that text isnt from this bot,
-            if output and 'text' in output and 'user' in output and output['user'] != at_bot_id:
+            if output and 'text' in output and 'user' in output and output['user'] != AT_BOT_ID:
                 return output['text'], output['channel'], output
                 # return None, None
     return None, None, None
 
 def handle_read_definition(command, channel, message_data):
     # Extract just the relevent section from the text
-    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
 
     # Extract just the word from the command
     word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
@@ -422,7 +423,7 @@ def handle_read_definition(command, channel, message_data):
     reply_definitions(definitions, channel)
 
 def handle_secondary_add_definition(command, channel, message_data):
-    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
     command_data = command.split(" ")
 
 def handle_multi(command, channel, message_data, command_root):
@@ -435,7 +436,7 @@ def handle_multi(command, channel, message_data, command_root):
 
 def handle_add_definition(command, channel, message_data):
     # Extract just the relevent section from the text
-    #command = text.split("<@" + at_bot_id + ">")[1].strip()
+    #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
 
     # Extract just the word and the meaning from the command
     #word_and_meaning = command[len([command_text for command_text in ADD_COMMAND if command.startswith(command_text)][0]):].split(":")
