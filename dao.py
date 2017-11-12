@@ -2,6 +2,7 @@ import os
 import sqlite3
 import definition_model
 import blacklisted_model
+import item_model
 from slackclient import SlackClient
 from sqlite3 import Error
 
@@ -23,11 +24,156 @@ def create_connection():
 
     return None
 
+# START DEFINITIONS --- START DEFINITIONS --- START DEFINITIONS --- START DEFINITIONS --- START DEFINITIONS --- START DEFINITIONS #
+
+def get_by_id(unique_id):
+    """ return word associated with input unique_id """
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions WHERE id=? '''
+
+    data = (unique_id,)
+    cursor.execute(sql, data)
+
+    row = cursor.fetchone()
+
+    if row:
+        definition = definition_model.Definition()
+        print(row)
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+
+        return definition
+    else:
+        return None
+
+def delete_by_id(unique_id):
+    """ delete definition row based on input unique id """
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM definitions WHERE id=? '''
+
+    data = (unique_id,)
+    cursor.execute(sql, data)
+
+    print(cursor)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def select_all():
+    """ return all words defined in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions")
+
+    rows = cursor.fetchall()
+
+    definitions = []
+
+    for row in rows:
+        definition = definition_model.Definition()
+        print(row)
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+        definitions.append(definition)
+
+    cursor.close()
+    connection.close()
+
+    return definitions
+
+def insert_definition(definition):
+    """ insert definition in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' INSERT INTO definitions(word, relation, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?, ?) '''
+
+    data = (definition.word, definition.relation, definition.meaning, definition.user, definition.channel, definition.date_time_added)
+    print(data)
+    cursor.execute(sql, data)
+    print(cursor)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def read_definition(word):
+    """ read all definitions present for a word """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT id, word, relation, meaning, user, channel, date_time_added FROM definitions WHERE word=? '''
+
+    print("word: " + word)
+    data = (word,)
+    cursor.execute(sql, data)
+    print(cursor)
+
+    rows = cursor.fetchall()
+
+    definitions = []
+
+    for row in rows:
+        definition = definition_model.Definition()
+        print(row)
+        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + row[5] + str(row[6]))
+        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+        definitions.append(definition)
+
+    cursor.close()
+    connection.close()
+
+    return definitions
+
+def get_defined_words():
+    """ read all currently defined words in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT word FROM definitions '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    definitions = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return definitions
+
+# END DEFINITIONS --- END DEFINITIONS --- END DEFINITIONS --- END DEFINITIONS --- END DEFINITIONS --- END DEFINITIONS #
+
+# START BLACKLIST --- START BLACKLIST --- START BLACKLIST --- START BLACKLIST --- START BLACKLIST --- START BLACKLIST #
+
+def get_blacklisted_words():
+    """ read all currently blacklisted words in the database """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT word FROM blacklist '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    blacklisted_words = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return blacklisted_words
+
 def get_blacklisted_by_word(word):
     """ return blacklisted word data based on input word """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM blacklist WHERE word=? '''
+    sql = ''' SELECT id, word, user, channel, date_time_added FROM blacklist WHERE word=? '''
 
     data = (word,)
     cursor.execute(sql, data)
@@ -45,7 +191,7 @@ def get_blacklisted_by_id(unique_id):
     """ return blacklisted word data based on input unique id """
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM blacklist WHERE id=? '''
+    sql = ''' SELECT id, word, user, channel, date_time_added FROM blacklist WHERE id=? '''
 
     data = (unique_id,)
     cursor.execute(sql, data)
@@ -95,7 +241,7 @@ def select_all_blacklisted():
 
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM blacklist")
+    cursor.execute("SELECT id, word, user, channel, date_time_added FROM blacklist")
 
     rows = cursor.fetchall()
 
@@ -112,145 +258,9 @@ def select_all_blacklisted():
 
     return blacklist
 
-def get_by_id(unique_id):
-    """ return word associated with input unique_id """
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' SELECT * FROM definitions WHERE id=? '''
+# END BLACKLIST --- END BLACKLIST --- END BLACKLIST --- END BLACKLIST --- END BLACKLIST --- END BLACKLIST --- END BLACKLIST --- END BLACKLIST #
 
-    data = (unique_id,)
-    cursor.execute(sql, data)
-
-    row = cursor.fetchone()
-
-    if row:
-        definition = definition_model.Definition()
-        print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
-
-        return definition
-    else:
-        return None
-
-def delete_by_id(unique_id):
-    """ delete definition row based on input unique id """
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' DELETE FROM definitions WHERE id=? '''
-
-    data = (unique_id,)
-    cursor.execute(sql, data)
-
-    print(cursor)
-    connection.commit()
-
-    cursor.close()
-    connection.close()
-
-def select_all():
-    """ return all words defined in the database """
-
-    connection = create_connection()
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM definitions")
-
-    rows = cursor.fetchall()
-
-    definitions = []
-
-    for row in rows:
-        definition = definition_model.Definition()
-        print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
-        definitions.append(definition)
-
-    cursor.close()
-    connection.close()
-
-    return definitions
-
-def insert_definition(definition):
-    """ insert definition in the database """
-
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' INSERT INTO definitions(word, meaning, user, channel, date_time_added) values(?, ?, ?, ?, ?) '''
-
-    data = (definition.word, definition.meaning, definition.user, definition.channel, definition.date_time_added)
-    print(data)
-    cursor.execute(sql, data)
-    print(cursor)
-    connection.commit()
-
-    cursor.close()
-    connection.close()
-
-def read_definition(word):
-    """ read all definitions present for a word """
-
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' SELECT * FROM definitions WHERE word=? '''
-
-    print("word: " + word)
-    data = (word,)
-    cursor.execute(sql, data)
-    print(cursor)
-
-    rows = cursor.fetchall()
-
-    definitions = []
-
-    for row in rows:
-        definition = definition_model.Definition()
-        print(row)
-        print(str(row[0]) + row[1] + row[2] + row[3] + row[4] + str(row[5]))
-        definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5])
-        definitions.append(definition)
-
-    cursor.close()
-    connection.close()
-
-    return definitions
-
-def get_defined_words():
-    """ read all currently defined words in the database """
-
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' SELECT word FROM definitions '''
-
-    cursor.execute(sql)
-
-    rows = cursor.fetchall()
-
-    definitions = [row[0] for row in rows]
-
-    cursor.close()
-    connection.close()
-
-    return definitions
-
-def get_blacklisted_words():
-    """ read all currently blacklisted words in the database """
-
-    connection = create_connection()
-    cursor = connection.cursor()
-    sql = ''' SELECT word FROM blacklist '''
-
-    cursor.execute(sql)
-
-    rows = cursor.fetchall()
-
-    blacklisted_words = [row[0] for row in rows]
-
-    cursor.close()
-    connection.close()
-
-    return blacklisted_words
-
+# START IGNORED USER --- START IGNORED USER --- START IGNORED USER --- START IGNORED USER --- START IGNORED USER --- START IGNORED USER #
 
 def insert_ignored_user(user):
     """ insert ignored user into ignore table """
@@ -299,6 +309,10 @@ def delete_ignored_by_user_id(user_id):
     cursor.close()
     connection.close()
 
+# END IGNORED USER --- END IGNORED USER --- END IGNORED USER --- END IGNORED USER --- END IGNORED USER --- END IGNORED USER #
+
+# BEGIN WORD USAGE --- BEGIN WORD USAGE --- BEGIN WORD USAGE --- BEGIN WORD USAGE --- BEGIN WORD USAGE --- BEGIN WORD USAGE #
+
 def increment_word_usage_count(word, times_used):
     """ update times used in word_usage """
 
@@ -316,6 +330,9 @@ def increment_word_usage_count(word, times_used):
 
     cursor.close()
     connection.close()
+
+# END WORD USAGE --- END WORD USAGE --- END WORD USAGE --- END WORD USAGE --- END WORD USAGE --- END WORD USAGE --- END WORD USAGE #
+# BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA --- BEGIN KARMA #
 
 def update_karma(key, delta):
     """ Add or remove entity karma """
@@ -369,3 +386,78 @@ def get_top_karma(limit):
 
     return [(row[0], row[1]) for row in rows]
 
+# END KARMA --- END KARMA --- END KARMA --- END KARMA --- END KARMA --- END KARMA --- END KARMA --- END KARMA --- END KARMA #
+
+# START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS #
+
+def insert_item(item_model):
+    """ insert new item """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' INSERT INTO items(name, user_name, channel, date_time_added) values(?, ?, ?, ?) '''
+
+    data = (item_model.name, item_model.user_name, item_model.channel, item_model.date_time_added)
+    print(item_model)
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_items():
+    """ return a list of all items currently held """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT name FROM items '''
+
+    cursor.execute(sql)
+
+    rows = cursor.fetchall()
+
+    ignored = [row[0] for row in rows]
+
+    cursor.close()
+    connection.close()
+
+    return ignored
+
+def delete_item_by_name(item_name):
+    """ delete ignored user by user_id """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM items WHERE name=? '''
+
+    data = (item_name, )
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def swap_items(new_item_model):
+    """ take a new item, swap it with the oldest existing item, and return the old item """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT id, name, user_name, channel, date_time_added FROM items ORDER BY date_time_added ASC LIMIT 1 '''
+
+    # Get oldest item
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    old_item = item_model.Item()
+    old_item.from_database(row[0], row[1], row[2], row[3], row[4])
+
+    # Close these. Remaining operations will create their own connections
+    cursor.close()
+    connection.close()
+
+    # Delete item
+    delete_item_by_name(old_item.name)
+
+    # Insert new item
+    insert_item(new_item_model)
+
+    return old_item
