@@ -56,19 +56,30 @@ TOP_KARMA_SUBCOMMAND = "top"
 TOP_KARMA_LIMIT = 5
 
 # globals
-global at_bot_id
-global at_target_user_id
 global defined_words
 global blacklisted_words
 global ignored_users
+
+global at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
+global bot_match = "<@" + at_bot_id + ">"
+global at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
+
+# Regexs
+CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) ' + re.escape(bot_match) + ')|(?:' + re.escape(bot_match) + ') (.+))$')
+KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 
 def handle_text(text, channel, message_data):
     print("Handling text")
-    bot_match = "<@" + at_bot_id + ">"
-    if (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
+    container_operation = CONTAINER_REGEX.search(text)
+
+    # Container operations are singular, so we don't need to look for other matches
+    if (container_operation):
+        handle_container_operation(container_operation)
+        return
+    elif (text.startswith(bot_match) and not re.search('^ ?(--|\+\+)', text[len(bot_match):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:
@@ -82,9 +93,8 @@ def check_user_text(text, channel, message_data, testing_mode):
     words = word_check.sanitize_and_split_words(text)
     print_if_testing("Got words: " + str(words), message_data)
     unique_words = set(words)
-    karma_regex = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
-    karma = karma_regex.findall(text);
+    karma = KARMA_REGEX.findall(text);
     for result in karma:
         handle_karma_change(result, channel, message_data)
 
@@ -131,7 +141,7 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
     print("In handle_command")
-    command = text.split("<@" + at_bot_id + ">")[1].strip().lower()
+    command = text.split(bot_match)[1].strip().lower()
     print("Parsed command: " + command)
 
     relation = check_for_explicit_relation(command)
@@ -176,6 +186,11 @@ def handle_command(text, channel, message_data):
         handle_unknown_command(channel)
 
     return True
+
+def handle_container_operation(container_operation):
+    operation = container_operation.group(1)
+    item = container_operation.group(2) or container_operation.group(3)
+    print("Got operation: \"" + operation + "\" and item: \"" + item + "\"")
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")
@@ -285,7 +300,7 @@ def handle_help(channel):
 
 def handle_say(text, channel, message_data):
     print("In handle_say")
-    raw_phrase = text.split("<@" + at_bot_id + ">")[1].strip()[4:]
+    raw_phrase = text.split(bot_match)[1].strip()[4:]
     # Extract just the phrase from the command
     #phrase = command[len([command_text for command_text in SAY_COMMAND if command.startswith(command_text)][0]):].strip()
     phrase_data = raw_phrase.lower().split(" ")
@@ -622,14 +637,10 @@ if __name__ == "__main__":
         try:
             if slack_client.rtm_connect():
                 print("StokeBot connected and running!")
-                global at_bot_id
-                global at_target_user_id
                 global defined_words
                 global blacklisted_words
                 global ignored_users
                 global testing_channel_ids
-                at_bot_id = api.get_user_id(BOT_NAME) # Get the bot's ID
-                at_target_user_id = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
                 defined_words = dao.get_defined_words()
                 blacklisted_words = dao.get_blacklisted_words()
                 ignored_users = dao.get_ignored_user_ids()
