@@ -21,7 +21,8 @@ ACTION_DENOTION = "<action>"
 TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
 AT_BOT_ID = api.get_user_id(BOT_NAME) # Get the bot's ID
-BOT_MATCH = "<@" + AT_BOT_ID + ">"
+BOT_MATCH = ("<@" + AT_BOT_ID + ">")
+ALT_BOT_MATCH = ("<@" + AT_BOT_ID + "|" + BOT_NAME + ">")
 AT_TARGET_USER_ID = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
 
 
@@ -66,7 +67,7 @@ global blacklisted_words
 global ignored_users
 
 # Regexs
-CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) ' + re.escape(BOT_MATCH) + ')|(?:' + re.escape(BOT_MATCH) + ') (.+))$')
+CONTAINER_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
 # instantiate Slack & Twilio clients
@@ -79,7 +80,6 @@ def handle_text(text, channel, message_data):
     # Container operations are singular, so we don't need to look for other matches
     if (container_operation):
         handle_container_operation(container_operation)
-        return
     elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
