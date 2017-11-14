@@ -102,7 +102,7 @@ def check_user_text(text, channel, message_data, testing_mode):
     print_if_testing("Got words: " + str(words), message_data)
     unique_words = set(words)
 
-    karma = karma_regex.findall(text)
+    karma = KARMA_REGEX.findall(text)
     for result in karma:
         handle_karma_change(result, channel, message_data)
 
