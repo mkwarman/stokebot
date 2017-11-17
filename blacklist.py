@@ -27,17 +27,29 @@ def handle_blacklist(command, channel, message_data, blacklisted_words):
 def blacklist_add(word, channel, message_data, blacklisted_words):
     print("in blacklist_add, word: " + word)
 
-    # Instantiate blacklist object
-    blacklisted_object = blacklisted_model.Blacklisted()
-
     user_name = api.get_user_name(message_data['user'])
     channel_name = api.get_name_from_id(message_data['channel'])
 
+    blacklist_add_to_db(word, user_name, channel_name)
+    blacklisted_words.append(word)
+
+    api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
+
+def blacklist_add_from_dictionary(word, message_data, blacklisted_words):
+    print("in blacklist_add_from_dictionary, word: " + word)
+
+    user_name = "[dictionary_api]"
+    channel_name = api.get_name_from_id(message_data['channel'])
+
+    blacklist_add_to_db(word, user_name, channel_name)
+    blacklisted_words.append(word)
+
+def blacklist_add_to_db(word, user_name, channel_name):
+    # Instantiate blacklist object
+    blacklisted_object = blacklisted_model.Blacklisted()
     blacklisted_object.new(word, user_name, channel_name)
 
     dao.insert_blacklisted(blacklisted_object)
-    blacklisted_words.append(word)
-    api.send_reply("Ok <@" + message_data['user'] + ">, I've added " + word + " to the blacklist", channel)
 
 def blacklist_read(word, channel, message_data, blacklisted_words):
     blacklisted = dao.get_blacklisted_by_word(word)

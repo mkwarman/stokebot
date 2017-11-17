@@ -9,6 +9,7 @@ import api
 import word_check
 import re
 import traceback
+import random
 from slackclient import SlackClient
 
 # constants
@@ -28,6 +29,8 @@ BOT_MATCH = ("<@" + AT_BOT_ID + ">")
 ALT_BOT_MATCH = ("<@" + AT_BOT_ID + "|" + BOT_NAME + ">")
 AT_TARGET_USER_ID = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
 
+# Chances
+DADJOKE_CHANCE = 50
 
 # Triggers
 POSSESSIVE_TRIGGERS = ("’s","'s")
@@ -74,8 +77,9 @@ global ignored_users
 global held_items
 
 # Regexs
-ITEM_REGEX = re.compile(r'^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
+ITEM_REGEX = re.compile(r'(?i)^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
+DADJOKE_REGEX = re.compile(r'(?i)^i[\'\’]m ((?: ?[a-zA-z]+){0,5}) ?$')
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -83,10 +87,13 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 def handle_text(text, channel, message_data):
     print("Handling text")
     item_operation = ITEM_REGEX.search(text)
+    dadjoke_result = DADJOKE_REGEX.search(text)
 
     # Container operations are singular, so we don't need to look for other matches
     if (item_operation):
         item.handle_item_operation(item_operation, GIVES_TRIGGER, MAX_HELD_ITEMS, held_items, channel, message_data)
+    elif (chance(DADJOKE_CHANCE) and dadjoke_result):
+        api.send_reply("Hi " + dadjoke_result.group(1) + ", I'm DadBot!", channel)
     elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
@@ -139,12 +146,7 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
             if testing_mode:
                 api.send_reply("Found dictionary definition for \"" + word + "\". Adding to blacklist...", channel)
             print("Found dictionary definition for \"" + word + "\". Adding to blacklist...")
-            blacklisted_object = blacklisted_model.Blacklisted()
-            channel_name = api.get_name_from_id(message_data['channel'])
-            user_name = "[dictionary_api]"
-            blacklisted_object.new(word, user_name, channel_name)
-            dao.insert_blacklisted(blacklisted_object)
-            blacklisted_words.append(word)
+            blacklist.blacklist_add_from_dictionary(word, message_data, blacklisted_words)
 
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
@@ -196,6 +198,9 @@ def handle_command(text, channel, message_data):
         handle_unknown_command(channel)
 
     return True
+
+def chance(percentage):
+    return (random.randint(1, 100) <= percentage)
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")

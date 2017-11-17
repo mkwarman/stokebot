@@ -3,7 +3,7 @@ import item_model
 import dao
 
 def handle_item_operation(item_operation, gives_trigger, max_held_items, held_items, channel, message_data):
-    operation = item_operation.group(1)
+    operation = item_operation.group(1).lower()
     item_name = item_operation.group(2) or item_operation.group(3)
     print("Got operation: \"" + operation + "\" and item: \"" + item_name + "\"")
     if (operation == gives_trigger):
