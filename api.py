@@ -40,25 +40,29 @@ def get_user_real_name(user_id):
     api_call = slack_client.api_call("users.info", user=user_id)
     if api_call.get('ok'):
         user = api_call.get('user')
-        if 'id' in user and user.get('id') == user_id:
+        if 'id' in user and user.get('id') == user_id and 'profile' in user and 'real_name' in user.get('profile'):
             name = user.get('profile').get('real_name')
             print("Got target user real name for '" + user['id'] + "': " + name)
             return name
-
-        print("Real name not found")
-        return None
+        else:
+            print("Real name not found")
+            return None
+    else:
+        print("get_user_real_name api call failed")
 
 def get_user_first_name(user_id):
     api_call = slack_client.api_call("users.info", user=user_id)
     if api_call.get('ok'):
         user = api_call.get('user')
-        if 'id' in user and user.get('id') == user_id:
+        if 'id' in user and user.get('id') == user_id and 'profile' in user and 'first_name' in user.get('profile'):
             name = user.get('profile').get('first_name')
             print("Got target user first name for '" + user['id'] + "': " + name)
             return name
-
-        print("First name not found")
-        return None
+        else:
+            print("First name not found")
+            return None
+    else:
+        print("get_user_first_name api call failed")
 
 def get_channel_name(channel_id):
     print("channel_id: " + channel_id)
