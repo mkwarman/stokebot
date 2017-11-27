@@ -80,6 +80,7 @@ global held_items
 ITEM_REGEX = re.compile(r'(?i)^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 DADJOKE_REGEX = re.compile(r'(?i)^i[\'\’]m ((?: ?[a-zA-z]+){0,5}) ?$')
+TAG_CHECK = re.compile(r'(<(?:@|#)[^ ]+>)')
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -232,7 +233,7 @@ def handle_karma_change(karma, channel, message_data):
     key = karma[0].lower()
     operator = karma[1]
     delta = len(operator) - 1
-    response = (to_upper_if_tag(key)) + "'s karma has "
+    response = (to_first_name_if_tag(key)) + "'s karma has "
 
     if (key == "<@" + message_data['user'].lower() + ">"):
         # Don't let users vote on themselves
@@ -266,7 +267,7 @@ def handle_karma(text, channel):
         handle_top_karma(channel)
         return
 
-    response = to_upper_if_tag(key)
+    response = to_first_name_if_tag(key)
 
     karma = dao.get_karma(key)
 
@@ -281,7 +282,7 @@ def handle_top_karma(channel):
     response = "Top karma entries:"
     top_karma_entities = dao.get_top_karma(TOP_KARMA_LIMIT)
     for entity in top_karma_entities:
-        response += ("\n" + to_upper_if_tag(entity[0]) + ": " + str(entity[1]))
+        response += ("\n" + to_real_name_if_tag(entity[0]) + ": " + str(entity[1]))
 
     api.send_reply(response, channel)
 
@@ -505,12 +506,38 @@ def handle_special_relation(definition):
         return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)
 
 def to_upper_if_tag(text):
-    tag_check = re.compile(r'(<(?:@|#)[^ ]+>)')
-    search_result = tag_check.search(text)
+    search_result = TAG_CHECK.search(text)
 
     if search_result:
         tag = search_result.group(1)
         text = text.replace(tag, tag.upper())
+
+    return text
+
+def to_real_name_if_tag(text):
+    search_result = TAG_CHECK.search(text)
+
+    if search_result:
+        tag = search_result.group(1)
+        user_id = tag[2:-1].upper()
+        name = api.get_user_real_name(user_id)
+        if not name:
+            name = tag.upper()
+        text = text.replace(tag, name)
+
+    return text
+
+def to_first_name_if_tag(text):
+    search_result = TAG_CHECK.search(text)
+
+    if search_result:
+        tag = search_result.group(1)[2:-1].upper()
+        user_id = tag[2:-1].upper()
+        name = api.get_user_first_name(user_id)
+        if name:
+            text = text.replace(tag, name)
+        else:
+            text = to_real_name_if_tag(text).split(" ")[0]
 
     return text
 
