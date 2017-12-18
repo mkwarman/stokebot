@@ -294,12 +294,12 @@ def handle_check(command, channel, message_data):
 
 def handle_help(channel):
     response = "Basic Commands:\n" \
-               + ">`@stokebot X is/are Y` --- Stokebot will reply \"X is/are Y\" when X is triggered"\
+               + ">`@stokebot X is/are Y` --- Stokebot will reply \"X is/are Y\" when X is triggered\n"\
                + ">`@stokebot X means Y` --- Stokebot will reply \"X means Y\" with definition format when X is triggered\n" \
-               + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered"\
-               + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered"\
-               + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered"\
-               + ">`/me gives/takes [item] to/from @stokebot` --- Stokebot will take from or give you \"item\""\
+               + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered\n"\
+               + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered\n"\
+               + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered\n"\
+               + ">`/me gives/takes [item] to/from @stokebot` --- Stokebot will take from or give you \"item\"\n"\
                + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
                + "listen to commands\n" \
                + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
