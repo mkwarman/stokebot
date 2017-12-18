@@ -141,7 +141,7 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
         if not word_check.check_dictionary(word):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
-            api.send_reply(response, channel)
+            api.send_reply(response, AT_TARGET_USER_ID)
         else:
             # Insert dictionary word into the blacklist so we dont keep using database queries
             if testing_mode:
