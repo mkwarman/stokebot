@@ -54,12 +54,12 @@ def list_items(held_items, channel):
 
     if (len(held_items) > 2):
         for item in held_items[:-1]:
-            response += (item + ", ")
-        response += " and " + held_items[-1]
+            response += ("*" + item + "*, ")
+        response += " and *" + held_items[-1] + "*"
     elif (len(held_items) == 2):
-        response += held_items[0] + " and " + held_items[1]
+        response += "*" + held_items[0] + "* and *" + held_items[1] + "*"
     elif (len(held_items) == 1):
-        response += held_items[0]
+        response += "*" + held_items[0] + "*"
     else:
         response = "I'm not currently holding anything!"
 
