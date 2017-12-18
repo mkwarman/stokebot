@@ -28,6 +28,7 @@ AT_BOT_ID = api.get_user_id(BOT_NAME) # Get the bot's ID
 BOT_MATCH = ("<@" + AT_BOT_ID + ">")
 ALT_BOT_MATCH = ("<@" + AT_BOT_ID + "|" + BOT_NAME + ">")
 AT_TARGET_USER_ID = api.get_user_id(TARGET_USER_NAME) # Get the target user's ID
+AT_BOT_OWNER_ID = api.get_user_id(BOT_OWNER_NAME) # Get the target user's ID
 
 # Chances
 DADJOKE_CHANCE = 50
@@ -142,6 +143,7 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
             # definition was not found
             response = "Hey <@" +message_data['user'] + ">! What does \"" + word + "\" mean?"
             api.send_reply(response, AT_TARGET_USER_ID)
+            api.send_reply(response, AT_BOT_OWNER_ID)
         else:
             # Insert dictionary word into the blacklist so we dont keep using database queries
             if testing_mode:
