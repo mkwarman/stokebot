@@ -95,7 +95,7 @@ def handle_text(text, channel, message_data):
     if (item_operation):
         item.handle_item_operation(item_operation, GIVES_TRIGGER, MAX_HELD_ITEMS, held_items, channel, message_data)
     elif (chance(DADJOKE_CHANCE) and dadjoke_result):
-        api.send_reply("Hi " + dadjoke_result.group(1) + ", I'm DadBot!", channel)
+        api.send_reply("Hi \"" + dadjoke_result.group(1) + "\", I'm DadBot!", channel)
     elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
