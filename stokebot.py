@@ -120,12 +120,7 @@ def check_user_text(text, channel, message_data, testing_mode):
     # Check for defined words
     for word in list(unique_words):
         if word in defined_words:
-            if testing_mode:
-                api.send_reply("Found \"" + word + "\" in defined_words", channel)
-            print("Found \"" + word + "\" in defined_words")
-            definitions = dao.read_definition(word)
-            dao.increment_word_usage_count(word, words.count(word))
-            reply_definitions(definitions, channel)
+            handle_defined_value(word, words.count(word), channel, testing_mode)
             unique_words.remove(word)
         elif word in blacklisted_words:
             if testing_mode:
@@ -134,14 +129,9 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     # Check for defined phrases
-    for phrase in set(defined_phrases):
+    for phrase in defined_phrases:
         if phrase in text:
-            if testing_mode:
-                api.send_reply("Found \"" + phrase + "\" in defined_phrases", channel)
-            print("Found\"" + phrase + "\" in defined_phrases")
-            definitions = dao.read_definition(phrase)
-            dao.increment_word_usage_count(phrase, 1)
-            reply_definitions(definitions, channel)
+            handle_defined_value(phrase, 1, channel, testing_mode)
 
     # Check for target user
     if ('user' in message_data and AT_TARGET_USER_ID in message_data['user']) or testing_mode:
@@ -211,6 +201,8 @@ def handle_command(text, channel, message_data):
         handle_check(command, channel, message_data)
     elif command == HELP_COMMAND:
         handle_help(channel)
+    elif command in defined_phrases or command in defined_words:
+        handle_defined_value(command, 1, channel, False)
     else:
         handle_unknown_command(channel)
 
@@ -218,6 +210,14 @@ def handle_command(text, channel, message_data):
 
 def chance(percentage):
     return (random.randint(1, 100) <= percentage) 
+
+def handle_defined_value(value, count, channel, testing_mode):
+    if testing_mode:
+        api.send_reply("Found \"" + value + "\" in defined_(words/phrases)", channel)
+    print("Found \"" + value + "\" in defined_(words/phrases)")
+    definitions = dao.read_definition(value)
+    dao.increment_word_usage_count(value, count)
+    reply_definitions(definitions, channel)
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")
@@ -574,15 +574,30 @@ def print_if_testing(print_text, message_data):
 
 def add_word_or_phrase(value):
     if " " not in value:
-        defined_words.append(value)
+        add_or_increment_dict(value, defined_words)
     else:
-        defined_phrases.append(value)
+        add_or_increment_dict(value, defined_phrases)
+
+def add_or_increment_dict(value, target_dict):
+    if value in target_dict:
+        target_dict[value] += 1
+    else:
+        target_dict[value] = 1
 
 def remove_word_or_phrase(value):
     if " " not in value:
-        defined_words.remove(value)
+        remove_or_decrement_dict(value, defined_words)
     else:
-        defined_phrases.remove(value)
+        remove_or_decrement_dict(value, defined_phrases)
+
+def remove_or_decrement_dict(value, target_dict):
+    if value not in target_dict:
+        print("Value not in target dict! " + target_dict)
+
+    if target_dict[value] > 1:
+        target_dict[value] -= 1
+    else:
+        del target_dict[value]
 
 def load_data():
     global defined_words
@@ -591,8 +606,8 @@ def load_data():
     global ignored_users
     global testing_channel_ids
     
-    defined_words = []
-    defined_phrases = []
+    defined_words = {}
+    defined_phrases = {}
     
     defined = dao.get_defined_words()
     for value in defined:
