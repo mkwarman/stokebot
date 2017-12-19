@@ -134,7 +134,7 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     # Check for defined phrases
-    for phrase in defined_phrases:
+    for phrase in set(defined_phrases):
         if phrase in text:
             if testing_mode:
                 api.send_reply("Found \"" + phrase + "\" in defined_phrases", channel)
