@@ -134,8 +134,14 @@ def check_user_text(text, channel, message_data, testing_mode):
             unique_words.remove(word)
 
     # Check for defined phrases
-    for all(phrase in text for phrase in defined_phrases):
-        print("Found defined phrase: " + phrase)
+    for phrase in defined_phrases:
+        if phrase in text:
+            if testing_mode:
+                api.send_reply("Found \"" + phrase + "\" in defined_phrases", channel)
+            print("Found\"" + phrase + "\" in defined_phrases")
+            definitions = dao.read_definition(phrase)
+            dao.increment_word_usage_count(phrase, 1)
+            reply_definitions(definitions, channel)
 
     # Check for target user
     if ('user' in message_data and AT_TARGET_USER_ID in message_data['user']) or testing_mode:
@@ -211,7 +217,7 @@ def handle_command(text, channel, message_data):
     return True
 
 def chance(percentage):
-    return (random.randint(1, 100) <= percentage)
+    return (random.randint(1, 100) <= percentage) 
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")
@@ -477,7 +483,7 @@ def add_definition(word, relation, meaning, channel, message_data):
     channel_name = api.get_name_from_id(message_data['channel'])
 
     # Populate definition object
-    add_word_or_phrase(value)
+    add_word_or_phrase(word)
     definition_object.new(word, relation, meaning, user_name, channel_name)
 
     api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " " + relation + " " + meaning, channel)
@@ -487,17 +493,27 @@ def add_definition(word, relation, meaning, channel, message_data):
     dao.insert_definition(definition_object)
 
 def reply_definitions(definitions, channel):
-    for definition in definitions:
-        print("sending " + str(definition) + " to " + channel)
-        if "<" in definition.relation:
-            response = handle_special_relation(definition)
-        elif (definition.relation == MEANS_COMMAND):
-            # Add definition formatting
-            response = ("*" + definition.word + "* " + definition.relation + " _" + definition.meaning + "_")
-        else:
-            response = (definition.word + " " + definition.relation + " " + definition.meaning)
+    index = 0
 
-        api.send_reply(response, channel)
+    if len(definitions) > 1:
+        print("getting random index, max: " + str(len(definitions)))
+        index = random.randint(0, len(definitions) - 1)
+    
+    print("Index: " + str(index))
+
+    definition = definitions[index]
+
+    #for definition in definitions:
+    print("sending " + str(definition) + " to " + channel)
+    if "<" in definition.relation:
+        response = handle_special_relation(definition)
+    elif (definition.relation == MEANS_COMMAND):
+        # Add definition formatting
+        response = ("*" + definition.word + "* " + definition.relation + " _" + definition.meaning + "_")
+    else:
+        response = (definition.word + " " + definition.relation + " " + definition.meaning)
+
+    api.send_reply(response, channel)
 
 def handle_special_relation(definition):
     print("Found special relation: " + definition.relation)
@@ -568,29 +584,39 @@ def remove_word_or_phrase(value):
     else:
         defined_phrases.remove(value)
 
+def load_data():
+    global defined_words
+    global defined_phrases
+    global blacklisted_words
+    global ignored_users
+    global testing_channel_ids
+    
+    defined_words = []
+    defined_phrases = []
+    
+    defined = dao.get_defined_words()
+    for value in defined:
+        add_word_or_phrase(value)
+    
+    blacklisted_words = dao.get_blacklisted_words()
+    ignored_users = dao.get_ignored_user_ids()
+    held_items = dao.get_items()
+
+    print("Got all defined words: " + str(defined_words))
+    print("Got all defined phrases: " + str(defined_phrases))
+    print("Got all blacklisted words: " + str(blacklisted_words))
+    print("Got all blacklisted users: " + str(ignored_users))
+    print("Got all held items: " + str(held_items))
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     run = True
     while run:
         try:
             if slack_client.rtm_connect():
-                print("StokeBot connected and running!")
-                global defined_words
-                global defined_phrases
-                global blacklisted_words
-                global ignored_users
-                global testing_channel_ids
-                defined = dao.get_defined_words()
-                for value in defined:
-                    add_word_or_phrase(value)
-                blacklisted_words = dao.get_blacklisted_words()
-                ignored_users = dao.get_ignored_user_ids()
-                held_items = dao.get_items()
-                print("Got all defined words: " + str(defined_words))
-                print("Got all defined phrases: " + str(defined_phrases))
-                print("Got all blacklisted words: " + str(blacklisted_words))
-                print("Got all blacklisted users: " + str(ignored_users))
-                print("Got all held items: " + str(held_items))
+                print ("Stokebot up and running!")
+
+                load_data()
 
                 while run:
                     text, channel, message_data = listen_for_text(slack_client.rtm_read())
