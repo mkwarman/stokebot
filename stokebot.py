@@ -73,6 +73,7 @@ TOP_KARMA_LIMIT = 5
 
 # globals
 global defined_words
+global defined_phrases
 global blacklisted_words
 global ignored_users
 global held_items
@@ -111,10 +112,12 @@ def check_user_text(text, channel, message_data, testing_mode):
     print_if_testing("Got words: " + str(words), message_data)
     unique_words = set(words)
 
+    # Check for karma changes
     karma = KARMA_REGEX.findall(text)
     for result in karma:
         handle_karma_change(result, channel, message_data)
 
+    # Check for defined words
     for word in list(unique_words):
         if word in defined_words:
             if testing_mode:
@@ -130,6 +133,11 @@ def check_user_text(text, channel, message_data, testing_mode):
             print("Found \"" + word + "\" in blacklisted_words")
             unique_words.remove(word)
 
+    # Check for defined phrases
+    for all(phrase in text for phrase in defined_phrases):
+        print("Found defined phrase: " + phrase)
+
+    # Check for target user
     if ('user' in message_data and AT_TARGET_USER_ID in message_data['user']) or testing_mode:
         print_if_testing("Target user said: " + text, message_data)
         handle_target_user_text(unique_words, channel, message_data, testing_mode)
@@ -360,7 +368,7 @@ def handle_delete(command, channel, message_data):
         if not definition:
             api.send_reply("ID " + word_id + " does not exist.", channel)
             return
-        defined_words.remove(definition.word)
+        remove_word_or_phrase(definition.word)
         dao.delete_by_id(word_id)
         response = "Ok <@" +message_data['user'] + ">, I deleted ID " + word_id + ": \"" + definition.word + "\"."
     else:
@@ -469,7 +477,7 @@ def add_definition(word, relation, meaning, channel, message_data):
     channel_name = api.get_name_from_id(message_data['channel'])
 
     # Populate definition object
-    defined_words.append(word)
+    add_word_or_phrase(value)
     definition_object.new(word, relation, meaning, user_name, channel_name)
 
     api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " " + relation + " " + meaning, channel)
@@ -548,6 +556,18 @@ def print_if_testing(print_text, message_data):
     if (message_data['channel'] in TESTING_CHANNEL_IDS):
         print(print_text)
 
+def add_word_or_phrase(value):
+    if " " not in value:
+        defined_words.append(value)
+    else:
+        defined_phrases.append(value)
+
+def remove_word_or_phrase(value):
+    if " " not in value:
+        defined_words.remove(value)
+    else:
+        defined_phrases.remove(value)
+
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     run = True
@@ -556,14 +576,18 @@ if __name__ == "__main__":
             if slack_client.rtm_connect():
                 print("StokeBot connected and running!")
                 global defined_words
+                global defined_phrases
                 global blacklisted_words
                 global ignored_users
                 global testing_channel_ids
-                defined_words = dao.get_defined_words()
+                defined = dao.get_defined_words()
+                for value in defined:
+                    add_word_or_phrase(value)
                 blacklisted_words = dao.get_blacklisted_words()
                 ignored_users = dao.get_ignored_user_ids()
                 held_items = dao.get_items()
                 print("Got all defined words: " + str(defined_words))
+                print("Got all defined phrases: " + str(defined_phrases))
                 print("Got all blacklisted words: " + str(blacklisted_words))
                 print("Got all blacklisted users: " + str(ignored_users))
                 print("Got all held items: " + str(held_items))
