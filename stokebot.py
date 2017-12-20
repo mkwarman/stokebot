@@ -521,7 +521,7 @@ def add_definition(word, relation, meaning, channel, message_data):
     add_word_or_phrase(word)
     definition_object.new(word, relation, meaning, user_name, channel_name)
 
-    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " " + relation + " " + meaning, channel)
+    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember " + word + " " + relation + " " + meaning, channel)
     print("attempting to insert into database: " + str(definition_object))
 
     # Send definition object to database
