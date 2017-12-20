@@ -388,7 +388,7 @@ def handle_tell(command, channel, message_data):
     if message_data['user'] in AT_BOT_OWNER_ID:
         result = TELL_REGEX.search(command)
         if result:
-            api.send_reply(result.group(2), result.group(1).upper())
+            api.send_reply(to_upper_if_tag(result.group(2)), result.group(1).upper())
         else:
             api.send_reply("Malformed command", channel)
     else:
