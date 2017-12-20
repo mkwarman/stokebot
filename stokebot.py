@@ -165,16 +165,16 @@ def handle_command(text, channel, message_data):
     command = command_caps.lower()
     print("Parsed command: " + command)
 
-    relation = check_for_explicit_relation(command)
+    relation = check_for_explicit_relation(command_caps)
 
     if relation:
-        handle_explicit_relation(command, channel, message_data, relation)
+        handle_explicit_relation(command_caps, channel, message_data, relation)
     
     # Direct commands
     elif command == STOP_COMMAND:
         return False
     elif command.startswith(ADD_COMMAND):
-        handle_add_definition(command, channel, message_data)
+        handle_add_definition(command_caps, channel, message_data)
     elif command.startswith(READ_COMMAND):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
@@ -206,11 +206,11 @@ def handle_command(text, channel, message_data):
 
     # Definition additions
     elif MEANS_TRIGGER in command:
-        handle_multi(command, channel, message_data, MEANS_COMMAND)
+        handle_multi(command, command_caps, channel, message_data, MEANS_COMMAND)
     elif IS_TRIGGER in command:
-        handle_multi(command, channel, message_data, IS_COMMAND)
+        handle_multi(command, command_caps, channel, message_data, IS_COMMAND)
     elif ARE_TRIGGER in command:
-        handle_multi(command, channel, message_data, ARE_COMMAND)
+        handle_multi(command, command_caps, channel, message_data, ARE_COMMAND)
 
     # Fallbacks
     elif command in defined_phrases or command in defined_words:
@@ -244,7 +244,7 @@ def handle_explicit_relation(command, channel, message_data, relation):
     command_data = command.split(relation)
     x = command_data[0].strip()
     y = command_data[1].strip()
-    stripped_relation = relation[4:-4]
+    stripped_relation = relation[4:-4].lower()
 
     if stripped_relation in POSSESSIVE_TRIGGERS:
         relation = POSSESSIVE_DENOTION
@@ -485,9 +485,9 @@ def handle_secondary_add_definition(command, channel, message_data):
     #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
     command_data = command.split(" ")
 
-def handle_multi(command, channel, message_data, command_root):
-    command_data = command.split(command_root)
-    x = command_data[0].strip()
+def handle_multi(command, command_caps, channel, message_data, command_root):
+    command_data = command_caps.split(command_caps[command.index(command_root):command.index(command_root)+len(command_root)])
+    x = command_data[0].strip().lower()
     y = command_data[1].strip()
 
     add_definition(x, command_root, y, channel, message_data)
@@ -507,6 +507,9 @@ def handle_add_definition(command, channel, message_data):
     add_definition(word, relation, meaning, channel, message_data)
 
 def add_definition(word, relation, meaning, channel, message_data):
+    # Normalize word
+    word = word.lower()
+    
     # Instantiate definition object
     definition_object = definition_model.Definition()
 
