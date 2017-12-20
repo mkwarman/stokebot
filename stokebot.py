@@ -391,6 +391,8 @@ def handle_tell(command, channel, message_data):
             api.send_reply(result.group(2), result.group(1).upper())
         else:
             api.send_reply("Malformed command", channel)
+    else:
+        api.send_reply("Sorry, <@" + message_data['user'] + ">, this command is only available to bot owner(s)", channel)
 
 
 def handle_unknown_command(channel):
