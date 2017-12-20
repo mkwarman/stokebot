@@ -54,6 +54,7 @@ IS_COMMAND = ("is")
 ARE_COMMAND = ("are")
 READ_COMMAND = ("what is", "define")
 LIST_ITEMS_COMMAND = ("list items")
+LIST_VARIABLES_COMMAND = ("list variables")
 BLACKLIST_COMMAND = ("blacklist")
 VERBOSE_COMMAND = ("verbose")
 KARMA_COMMAND = ("karma")
@@ -177,6 +178,8 @@ def handle_command(text, channel, message_data):
         handle_status_inquiry(channel)
     elif command == LIST_ITEMS_COMMAND:
         item.list_items(held_items, channel)
+    elif command == LIST_VARIABLES_COMMAND:
+        handle_list_variables(channel)
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
     elif command.startswith(KARMA_COMMAND):
@@ -246,6 +249,7 @@ def handle_explicit_relation(command, channel, message_data, relation):
         relation = ACTION_DENOTION
     elif stripped_relation == REACT_TRIGGER:
         relation = REACT_DENOTION
+        y = y.replace(":", "")
     else:
         relation = stripped_relation
 
@@ -312,20 +316,30 @@ def handle_check(command, channel, message_data):
     text = command[6:]
     check_user_text(text, channel, message_data, True)
 
+def handle_list_variables(channel):
+    response = "Variables:"
+    for key in constants.VARS_DICT.keys():
+        response += " $" + str(key)
+
+    api.send_reply(response, channel) 
+
 def handle_help(channel):
     response = "Basic Commands:\n" \
-               + ">`@stokebot X is/are Y` --- Stokebot will reply \"X is/are Y\" when X is triggered\n"\
+               + ">`@stokebot X is/are Y` --- Stokebot will reply \"X is/are Y\" when X is triggered\n" \
                + ">`@stokebot X means Y` --- Stokebot will reply \"X means Y\" with definition format when X is triggered\n" \
-               + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered\n"\
-               + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered\n"\
-               + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered\n"\
-               + ">`/me gives/takes [item] to/from @stokebot` --- Stokebot will take from or give you \"item\"\n"\
+               + ">`@stokebot X <'s> Y` --- Stokebot will reply \"X's Y\" when X is triggered\n" \
+               + ">`@stokebot X <reply> Y` --- Stokebot will reply \"Y\" when X is triggered\n" \
+               + ">`@stokebot X <action> Y` --- Stokebot will reply with \"/me Y\" when X is triggered\n" \
+               + ">`@stokebot X <react> Y` --- Stokebot will add a reaction to the message in which X is used\n" \
+               + ">`/me gives/takes [item] to/from @stokebot` --- Stokebot will take from or give you \"item\"\n" \
+               + ">`@stokebot list variables` --- Stokebot will list variables that can be used in definitions (see below)\n" \
                + ">`@stokebot ignore me/[user]` --- Use this command to stop stokebot from defining you or someone else's text. He will still " \
                + "listen to commands\n" \
                + ">`@stokebot listen to me/[user]` --- Use this command to have stokebot resume defining your or someone else's text after" \
                + "asking him to \"ignore\" it previously\n" \
                + ">`@stokebot stop` --- Use this command if I get too annoying or messed up. I will have to be manually " \
                + "restarted afterward, but that's ok... I'm not programmed to have feelings, after all...:slightly_frowning_face:\n" \
+               + ">*Variables* can be used in definitions by simply using their name with a dollar sign, like so: \"$pokemon_emoji\" => " + constants.get_random("pokemon_emoji") \
                + "\nThere are a few other more advanced administration commands, but since this bot is " \
                + "still in development they are outside of the scope of this help message. " \
                + "Feel free to pester <@" + api.get_user_id(BOT_OWNER_NAME) + "> with questions!"
