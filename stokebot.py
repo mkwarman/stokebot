@@ -67,6 +67,7 @@ HELP_COMMAND = ("help")
 IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
+TELL_COMMAND = ("tell <")
 
 MAX_KARMA_CHANGE = 10
 TOP_KARMA_SUBCOMMAND = "top"
@@ -84,6 +85,7 @@ ITEM_REGEX = re.compile(r'(?i)^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.es
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 DADJOKE_REGEX = re.compile(r'(?i)^i[\'\’]m ((?: ?[a-zA-z]+){0,5}) ?$')
 TAG_CHECK = re.compile(r'(<(?:@|#)[^ ]+>)')
+TELL_REGEX = re.compile(r'<(?:@|#)([a-zA-Z0-9]+)[^>]*> (.+)')
 
 # instantiate Slack & Twilio clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -196,6 +198,8 @@ def handle_command(text, channel, message_data):
         blacklist.handle_blacklist(command, channel, message_data, blacklisted_words)
     elif command.startswith(CHECK_COMMAND):
         handle_check(command, channel, message_data)
+    elif command.startswith(TELL_COMMAND):
+        handle_tell(command, channel, message_data)
     elif command == HELP_COMMAND:
         handle_help(channel)
 
@@ -379,6 +383,15 @@ def handle_say(text, channel, message_data):
         response = raw_phrase
 
     api.send_reply(response, channel)
+
+def handle_tell(command, channel, message_data):
+    if message_data['user'] in AT_BOT_OWNER_ID:
+        result = TELL_REGEX.search(command)
+        if result:
+            api.send_reply(result.group(2), result.group(1).upper())
+        else:
+            api.send_reply("Malformed command", channel)
+
 
 def handle_unknown_command(channel):
     api.send_reply("Command not recognized. Try `@stokebot help`", channel)
