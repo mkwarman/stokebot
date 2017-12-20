@@ -150,6 +150,15 @@ def send_reply(text, channel):
     slack_client.api_call("chat.postMessage", channel=channel,
                           text=text, as_user=True)
 
+def add_reaction(reaction, message_data, channel):
+    print("message data:\n" + message_data)
+    
+    file_id = None
+    file_comment = None
+    timestamp = None
+
+    #if 
+
 #def send_command(command, text, channel):
 #    response = slack_client.api_call("chat.command", command=command, text=text, channel=channel, as_user=True)
 #    print("command reply: " + str(response))
