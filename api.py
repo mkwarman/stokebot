@@ -147,17 +147,20 @@ def is_private(input_id):
 
 
 def send_reply(text, channel):
-    slack_client.api_call("chat.postMessage", channel=channel,
+    resp = slack_client.api_call("chat.postMessage", channel=channel,
                           text=text, as_user=True)
 
-def add_reaction(reaction, message_data, channel):
-    print("message data:\n" + message_data)
-    
-    file_id = None
-    file_comment = None
-    timestamp = None
+    if not resp["ok"]:
+        print("response:\n" + str(resp))
 
-    #if 
+def add_reaction(reaction, message_data, channel):
+    timestamp = message_data["ts"]
+
+    resp = slack_client.api_call("reactions.add", channel=channel,
+                          timestamp=timestamp, name=reaction)
+
+    if not resp["ok"]:
+        print("response:\n" + str(resp))
 
 #def send_command(command, text, channel):
 #    response = slack_client.api_call("chat.command", command=command, text=text, channel=channel, as_user=True)

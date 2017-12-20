@@ -10,6 +10,7 @@ import word_check
 import re
 import traceback
 import random
+import constants
 from slackclient import SlackClient
 
 # constants
@@ -22,6 +23,7 @@ MAX_HELD_ITEMS = 5
 POSSESSIVE_DENOTION = "<possessive>"
 REPLY_DENOTION = "<reply>"
 ACTION_DENOTION = "<action>"
+REACT_DENOTION = "<react>"
 TESTING_CHANNEL_IDS = ("G3RLY44JE", "G3PLLCBB4", "C7XV04PK4")
 
 AT_BOT_ID = api.get_user_id(BOT_NAME) # Get the bot's ID
@@ -37,11 +39,13 @@ DADJOKE_CHANCE = 50
 POSSESSIVE_TRIGGERS = ("’s","'s")
 REPLY_TRIGGER = ("reply")
 ACTION_TRIGGER = ("action")
+REACT_TRIGGER = ("react")
 MEANS_TRIGGER = (" means ")
 IS_TRIGGER = (" is ")
 ARE_TRIGGER = (" are ")
 GIVES_TRIGGER = ("gives")
 TAKES_TRIGGER = ("takes")
+VARIABLE_TRIGGER = ("$")
 
 # Commands
 ADD_COMMAND = ("add")
@@ -63,10 +67,6 @@ IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
 
-# Matches to check for when explicit relation is detected
-POSSESSIVE_MATCH = ("'s")
-REPLY_MATCH = ("reply")
-ACTION_MATCH = ("action")
 MAX_KARMA_CHANGE = 10
 TOP_KARMA_SUBCOMMAND = "top"
 TOP_KARMA_LIMIT = 5
@@ -120,7 +120,7 @@ def check_user_text(text, channel, message_data, testing_mode):
     # Check for defined words
     for word in list(unique_words):
         if word in defined_words:
-            handle_defined_value(word, words.count(word), channel, testing_mode)
+            handle_defined_value(word, words.count(word), channel, message_data, testing_mode)
             unique_words.remove(word)
         elif word in blacklisted_words:
             if testing_mode:
@@ -131,7 +131,7 @@ def check_user_text(text, channel, message_data, testing_mode):
     # Check for defined phrases
     for phrase in defined_phrases:
         if phrase in text:
-            handle_defined_value(phrase, 1, channel, testing_mode)
+            handle_defined_value(phrase, 1, channel, message_data, testing_mode)
 
     # Check for target user
     if ('user' in message_data and AT_TARGET_USER_ID in message_data['user']) or testing_mode:
@@ -165,6 +165,8 @@ def handle_command(text, channel, message_data):
 
     if relation:
         handle_explicit_relation(command, channel, message_data, relation)
+    
+    # Direct commands
     elif command == STOP_COMMAND:
         return False
     elif command.startswith(ADD_COMMAND):
@@ -173,14 +175,6 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
-    elif MEANS_TRIGGER in command:
-        handle_multi(command, channel, message_data, MEANS_COMMAND)
-    elif IS_TRIGGER in command:
-        handle_multi(command, channel, message_data, IS_COMMAND)
-    elif ARE_TRIGGER in command:
-        handle_multi(command, channel, message_data, ARE_COMMAND)
-#    elif command in SHOW_ALL_COMMAND:
-#        handle_show_all(channel)
     elif command == LIST_ITEMS_COMMAND:
         item.list_items(held_items, channel)
     elif command.startswith(VERBOSE_COMMAND):
@@ -201,8 +195,18 @@ def handle_command(text, channel, message_data):
         handle_check(command, channel, message_data)
     elif command == HELP_COMMAND:
         handle_help(channel)
+
+    # Definition additions
+    elif MEANS_TRIGGER in command:
+        handle_multi(command, channel, message_data, MEANS_COMMAND)
+    elif IS_TRIGGER in command:
+        handle_multi(command, channel, message_data, IS_COMMAND)
+    elif ARE_TRIGGER in command:
+        handle_multi(command, channel, message_data, ARE_COMMAND)
+
+    # Fallbacks
     elif command in defined_phrases or command in defined_words:
-        handle_defined_value(command, 1, channel, False)
+        handle_defined_value(command, 1, channel, message_data, False)
     else:
         handle_unknown_command(channel)
 
@@ -211,13 +215,13 @@ def handle_command(text, channel, message_data):
 def chance(percentage):
     return (random.randint(1, 100) <= percentage) 
 
-def handle_defined_value(value, count, channel, testing_mode):
+def handle_defined_value(value, count, channel, message_data, testing_mode):
     if testing_mode:
         api.send_reply("Found \"" + value + "\" in defined_(words/phrases)", channel)
     print("Found \"" + value + "\" in defined_(words/phrases)")
     definitions = dao.read_definition(value)
     dao.increment_word_usage_count(value, count)
-    reply_definitions(definitions, channel)
+    reply_definitions(definitions, channel, message_data)
 
 def check_for_explicit_relation(command):
     #pattern = re.compile("<(([^@#>])+)>")
@@ -240,6 +244,8 @@ def handle_explicit_relation(command, channel, message_data, relation):
         relation = REPLY_DENOTION
     elif stripped_relation == ACTION_TRIGGER:
         relation = ACTION_DENOTION
+    elif stripped_relation == REACT_TRIGGER:
+        relation = REACT_DENOTION
     else:
         relation = stripped_relation
 
@@ -429,9 +435,6 @@ def listen_for_text(slack_rtm_output):
     return None, None, None
 
 def handle_read_definition(command, channel, message_data):
-    # Extract just the relevent section from the text
-    #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
-
     # Extract just the word from the command
     word = command[len([command_text for command_text in READ_COMMAND if command.startswith(command_text)][0]):].strip()
     sanitized_word = re.sub("[^a-z -'’]", "", word)
@@ -447,7 +450,7 @@ def handle_read_definition(command, channel, message_data):
         return
 
     # Reply definitions from the database
-    reply_definitions(definitions, channel)
+    reply_definitions(definitions, channel, message_data)
 
 def handle_secondary_add_definition(command, channel, message_data):
     #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
@@ -492,11 +495,10 @@ def add_definition(word, relation, meaning, channel, message_data):
     # Send definition object to database
     dao.insert_definition(definition_object)
 
-def reply_definitions(definitions, channel):
+def reply_definitions(definitions, channel, message_data):
     index = 0
 
     if len(definitions) > 1:
-        print("getting random index, max: " + str(len(definitions)))
         index = random.randint(0, len(definitions) - 1)
     
     print("Index: " + str(index))
@@ -505,17 +507,32 @@ def reply_definitions(definitions, channel):
 
     #for definition in definitions:
     print("sending " + str(definition) + " to " + channel)
+    
+    if VARIABLE_TRIGGER in definition.meaning:
+        # One of the words might be a variable
+        definition.meaning = handle_definition_variables(definition.meaning)
+                
     if "<" in definition.relation:
-        response = handle_special_relation(definition)
+        response = handle_special_relation(definition, channel, message_data)
     elif (definition.relation == MEANS_COMMAND):
         # Add definition formatting
         response = ("*" + definition.word + "* " + definition.relation + " _" + definition.meaning + "_")
     else:
         response = (definition.word + " " + definition.relation + " " + definition.meaning)
 
-    api.send_reply(response, channel)
+    if response:
+        api.send_reply(response, channel)
 
-def handle_special_relation(definition):
+def handle_definition_variables(definition_meaning):
+    for word in definition_meaning.split(" "):
+        if word.startswith(VARIABLE_TRIGGER):
+            dict_key = re.sub("[^a-zA-Z]+", "", word)
+            if dict_key in constants.VARS_DICT:
+                definition_meaning = definition_meaning.replace((VARIABLE_TRIGGER + dict_key), constants.get_random(dict_key), 1)
+
+    return definition_meaning
+
+def handle_special_relation(definition, channel, message_data):
     print("Found special relation: " + definition.relation)
     if definition.relation == POSSESSIVE_DENOTION:
         # Given: X | Reply: X's Y
@@ -527,6 +544,10 @@ def handle_special_relation(definition):
         # Given: X | Reply: /me Y
         #api.send_command("/me", definition.meaning, channel)
         return ("_" + definition.meaning + "_")
+    elif definition.relation == REACT_DENOTION:
+        # Given: X | React with Y
+        api.add_reaction(definition.meaning, message_data, channel)
+        return None
     else:
         # Given: X | Reply: X [relation] Y
         return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)

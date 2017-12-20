@@ -1,22 +1,36 @@
+import random
+
 global VARS_DICT
 
 def load_dict():
     global VARS_DICT
     VARS_DICT = {}
 
-    VARS_DICT["colors"] = COLORS
-    VARS_DICT["moods"] = MOODS
+    VARS_DICT["color"] = COLORS
+    VARS_DICT["good_mood"] = GOOD_MOODS
+    VARS_DICT["bad_mood"] = BAD_MOODS
+    VARS_DICT["mood"] = MOODS
     VARS_DICT["coffee_emoji"] = COFFEE_EMOJI
     VARS_DICT["pokemon_emoji"] = POKEMON_EMOJI
     VARS_DICT["parrot_emoji"] = PARROT_EMOJI
     VARS_DICT["custom_emoji"] = CUSTOM_EMOJI
-    VARS_DICT["all_emoji"] = ALL_EMOJI
+    VARS_DICT["emoji"] = EMOJI
+
+def get_random(dict_key):
+    index = random.randint(0, len(VARS_DICT[dict_key]) - 1)
+    return VARS_DICT[dict_key][index]
 
 # Colors
 COLORS = ["red", "orange", "yellow", "green", "blue", "indigo", "violet", "brown", "black", "white"]
 
-# Moods
-MOODS = ["Amused", "Blissful", "Calm", "Cheerful", "Content", "Dreamy", "Ecstatic", "Energetic", "Excited", "Flirty", "Giddy", "Good", "Happy", "Joyful", "Loving", "Mellow", "Optimistic", "Peaceful", "Silly", "Sympathetic", "Angry", "Annoyed", "Apathetic", "Bad", "Cranky", "Depressed", "Envious", "Frustrated", "Gloomy", "Grumpy", "Guilty", "Indifferent", "Irritated", "Mad", "Melancholy", "Pessimistic", "Rejected", "Restless", "Sad", "Stressed", "Weird"]
+# Good moods
+GOOD_MOODS = ["Amused", "Blissful", "Calm", "Cheerful", "Content", "Dreamy", "Ecstatic", "Energetic", "Excited", "Flirty", "Giddy", "Good", "Happy", "Joyful", "Loving", "Mellow", "Optimistic", "Peaceful", "Silly", "Sympathetic"]
+
+# Bad moods
+BAD_MOODS = ["Angry", "Annoyed", "Apathetic", "Bad", "Cranky", "Depressed", "Envious", "Frustrated", "Gloomy", "Grumpy", "Guilty", "Indifferent", "Irritated", "Mad", "Melancholy", "Pessimistic", "Rejected", "Restless", "Sad", "Stressed", "Weird"]
+
+# All moods
+MOODS = GOOD_MOODS + BAD_MOODS
 
 # Coffee Emoji
 COFFEE_EMOJI = [
@@ -227,7 +241,7 @@ CUSTOM_EMOJI = COFFEE_EMOJI + POKEMON_EMOJI + PARROT_EMOJI + [
 ]
 
 # All emoji
-ALL_EMOJI = CUSTOM_EMOJI + [
+EMOJI = CUSTOM_EMOJI + [
     ":100:",
     ":1234:",
     ":interrobang:",
