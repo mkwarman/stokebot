@@ -658,7 +658,7 @@ def load_data():
     global defined_phrases
     global blacklisted_words
     global ignored_users
-    global testing_channel_ids
+    global held_items
     
     defined_words = {}
     defined_phrases = {}
