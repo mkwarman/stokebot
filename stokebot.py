@@ -522,9 +522,7 @@ def reply_definitions(definitions, channel, message_data):
     #for definition in definitions:
     print("sending " + str(definition) + " to " + channel)
     
-    if VARIABLE_TRIGGER in definition.meaning:
-        # One of the words might be a variable
-        definition.meaning = handle_definition_variables(definition.meaning)
+    definition.meaning = handle_possible_variables(definition.meaning)
                 
     if "<" in definition.relation:
         response = handle_special_relation(definition, channel, message_data)
@@ -537,13 +535,16 @@ def reply_definitions(definitions, channel, message_data):
     if response:
         api.send_reply(response, channel)
 
-def handle_definition_variables(definition_meaning):
-    for word in definition_meaning.split(" "):
-        if word.startswith(VARIABLE_TRIGGER):
-            dict_key = re.sub("[^a-zA-Z]+", "", word)
-            if dict_key in constants.VARS_DICT:
-                definition_meaning = definition_meaning.replace((VARIABLE_TRIGGER + dict_key), constants.get_random(dict_key), 1)
-
+def handle_possible_variables(definition_meaning):
+    # Check for the trigger first since most of the time there won't be one
+    if VARIABLE_TRIGGER in definition_meaning:
+        # One of the words might be a variable
+        for word in definition_meaning.split(" "):
+            if word.startswith(VARIABLE_TRIGGER):
+                dict_key = re.sub("[^a-zA-Z_]+", "", word)
+                if dict_key in constants.VARS_DICT:
+                    definition_meaning = definition_meaning.replace((VARIABLE_TRIGGER + dict_key), constants.get_random(dict_key), 1)
+ 
     return definition_meaning
 
 def handle_special_relation(definition, channel, message_data):

@@ -151,7 +151,7 @@ def send_reply(text, channel):
                           text=text, as_user=True)
 
     if not resp["ok"]:
-        print("response:\n" + str(resp))
+        print("response:\n" + str(resp) + "\ntext: " + text)
 
 def add_reaction(reaction, message_data, channel):
     timestamp = message_data["ts"]
@@ -160,7 +160,7 @@ def add_reaction(reaction, message_data, channel):
                           timestamp=timestamp, name=reaction)
 
     if not resp["ok"]:
-        print("response:\n" + str(resp))
+        print("response:\n" + str(resp) + "\nreaction: " + reaction)
 
 #def send_command(command, text, channel):
 #    response = slack_client.api_call("chat.command", command=command, text=text, channel=channel, as_user=True)
