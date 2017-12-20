@@ -161,7 +161,8 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
     print("In handle_command")
-    command = text.split(BOT_MATCH)[1].strip().lower()
+    command_caps = text.split(BOT_MATCH)[1].strip()
+    command = command_caps.lower()
     print("Parsed command: " + command)
 
     relation = check_for_explicit_relation(command)
@@ -199,7 +200,7 @@ def handle_command(text, channel, message_data):
     elif command.startswith(CHECK_COMMAND):
         handle_check(command, channel, message_data)
     elif command.startswith(TELL_COMMAND):
-        handle_tell(command, channel, message_data)
+        handle_tell(command_caps, channel, message_data)
     elif command == HELP_COMMAND:
         handle_help(channel)
 
@@ -388,7 +389,7 @@ def handle_tell(command, channel, message_data):
     if message_data['user'] in AT_BOT_OWNER_ID:
         result = TELL_REGEX.search(command)
         if result:
-            api.send_reply(to_upper_if_tag(result.group(2)), result.group(1).upper())
+            api.send_reply(result.group(2), result.group(1))
         else:
             api.send_reply("Malformed command", channel)
     else:
