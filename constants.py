@@ -24,10 +24,10 @@ def get_random(dict_key):
 COLORS = ["red", "orange", "yellow", "green", "blue", "indigo", "violet", "brown", "black", "white"]
 
 # Good moods
-GOOD_MOODS = ["Amused", "Blissful", "Calm", "Cheerful", "Content", "Dreamy", "Ecstatic", "Energetic", "Excited", "Flirty", "Giddy", "Good", "Happy", "Joyful", "Loving", "Mellow", "Optimistic", "Peaceful", "Silly", "Sympathetic"]
+GOOD_MOODS = ["amused", "blissful", "calm", "cheerful", "content", "dreamy", "ecstatic", "energetic", "excited", "flirty", "giddy", "good", "happy", "joyful", "loving", "mellow", "optimistic", "peaceful", "silly", "sympathetic"]
 
 # Bad moods
-BAD_MOODS = ["Angry", "Annoyed", "Apathetic", "Bad", "Cranky", "Depressed", "Envious", "Frustrated", "Gloomy", "Grumpy", "Guilty", "Indifferent", "Irritated", "Mad", "Melancholy", "Pessimistic", "Rejected", "Restless", "Sad", "Stressed", "Weird"]
+BAD_MOODS = ["angry", "annoyed", "apathetic", "bad", "cranky", "depressed", "envious", "frustrated", "gloomy", "grumpy", "guilty", "indifferent", "irritated", "mad", "melancholy", "pessimistic", "rejected", "restless", "sad", "stressed", "weird"]
 
 # All moods
 MOODS = GOOD_MOODS + BAD_MOODS
