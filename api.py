@@ -154,6 +154,7 @@ def send_reply(text, channel):
         print("response:\n" + str(resp) + "\ntext: " + text)
 
 def add_reaction(reaction, message_data, channel):
+    reaction = reaction.replace(":", "")
     timestamp = message_data["ts"]
 
     resp = slack_client.api_call("reactions.add", channel=channel,

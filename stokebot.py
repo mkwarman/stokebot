@@ -249,7 +249,6 @@ def handle_explicit_relation(command, channel, message_data, relation):
         relation = ACTION_DENOTION
     elif stripped_relation == REACT_TRIGGER:
         relation = REACT_DENOTION
-        y = y.replace(":", "")
     else:
         relation = stripped_relation
 
