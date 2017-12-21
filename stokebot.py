@@ -133,7 +133,7 @@ def check_user_text(text, channel, message_data, testing_mode):
 
     # Check for defined phrases
     for phrase in defined_phrases:
-        if phrase in text:
+        if phrase in text.lower():
             handle_defined_value(phrase, 1, channel, message_data, testing_mode)
 
     # Check for target user
