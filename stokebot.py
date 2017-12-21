@@ -133,7 +133,7 @@ def check_user_text(text, channel, message_data, testing_mode):
 
     # Check for defined phrases
     for phrase in defined_phrases:
-        if phrase in text:
+        if phrase in text.lower():
             handle_defined_value(phrase, 1, channel, message_data, testing_mode)
 
     # Check for target user
@@ -521,7 +521,7 @@ def add_definition(word, relation, meaning, channel, message_data):
     add_word_or_phrase(word)
     definition_object.new(word, relation, meaning, user_name, channel_name)
 
-    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember that " + word + " " + relation + " " + meaning, channel)
+    api.send_reply("Ok <@" + message_data['user'] + ">, I'll remember " + word + " " + relation + " " + meaning, channel)
     print("attempting to insert into database: " + str(definition_object))
 
     # Send definition object to database
@@ -658,7 +658,7 @@ def load_data():
     global defined_phrases
     global blacklisted_words
     global ignored_users
-    global testing_channel_ids
+    global held_items
     
     defined_words = {}
     defined_phrases = {}
