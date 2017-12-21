@@ -1,6 +1,12 @@
+import re
 import random
 
 global VARS_DICT
+
+ADJECTIVES_FILE_NAME = "data/adjectives.txt"
+ADVERBS_FILE_NAME = "data/adverbs.txt"
+NOUNS_FILE_NAME = "data/nouns.txt"
+VERBS_FILE_NAME = "data/verbs.txt"
 
 def load_dict():
     global VARS_DICT
@@ -15,10 +21,43 @@ def load_dict():
     VARS_DICT["parrot_emoji"] = PARROT_EMOJI
     VARS_DICT["custom_emoji"] = CUSTOM_EMOJI
     VARS_DICT["emoji"] = EMOJI
+    VARS_DICT["adjective"] = ADJECTIVES
+    VARS_DICT["adverb"] = ADVERBS
+    VARS_DICT["noun"] = NOUNS
+    VARS_DICT["noun_plural"] = NOUNS_PLURAL
+    VARS_DICT["verb"] = verb_base
+    VARS_DICT["verb_past"] = verb_past
+    VARS_DICT["verb_past_participle"] = verb_past_participle
+    VARS_DICT["verb_s"] = verb_s
+    VARS_DICT["verb_ing"] = verb_ing
 
 def get_random(dict_key):
     index = random.randint(0, len(VARS_DICT[dict_key]) - 1)
     return VARS_DICT[dict_key][index]
+
+def load_from_file(file_name):
+    source_file = open(file_name).read()
+    return re.findall(r'.+', source_file.lower())
+
+ADJECTIVES = load_from_file(ADJECTIVES_FILE_NAME)
+ADVERBS = load_from_file(ADVERBS_FILE_NAME)
+NOUNS = load_from_file(NOUNS_FILE_NAME)
+NOUNS_PLURAL = [noun + "s" for noun in NOUNS]
+
+# Load verbs and their tenses
+verbs_with_forms = load_from_file(VERBS_FILE_NAME)
+verb_base = []
+verb_past = []
+verb_past_participle = []
+verb_s = []
+verb_ing = []
+for line in verbs_with_forms:
+    verb = line.split(",")
+    verb_base.append(verb[0])
+    verb_past.append(verb[1])
+    verb_past_participle.append(verb[2])
+    verb_s.append(verb[3])
+    verb_ing.append(verb[4])
 
 # Colors
 COLORS = ["red", "orange", "yellow", "green", "blue", "indigo", "violet", "brown", "black", "white"]
