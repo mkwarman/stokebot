@@ -7,7 +7,7 @@ from sqlite3 import Error
 import definition_model
 import blacklisted_model
 import item_model
-import quote_model
+from quote_model import Quote
 
 DB_FILE = os.environ.get('DATABASE_FILE')
 
@@ -481,8 +481,8 @@ def insert_quote(quote):
     cursor.close()
     connection.close()
 
-def get_quote(author):
-    """ Get quotes by author """
+def get_quotes(author):
+    """ Get all quotes by author """
 
     connection = create_connection()
     cursor = connection.cursor()
@@ -495,7 +495,7 @@ def get_quote(author):
     quotes = []
 
     for row in rows:
-        quote = quote_model.Quote()
+        quote = Quote()
         quote.from_database(row[0], row[1], row[2], row[3], row[4])
 
         quotes.append(quote)
@@ -504,3 +504,59 @@ def get_quote(author):
     connection.close()
 
     return quotes
+
+def get_random_quote(author = None):
+    """ Get random quote (by author if present)"""
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    if author:
+        sql = ''' SELECT * FROM quotes WHERE user=? ORDER BY RANDOM() LIMIT 1 '''
+        data = (author, )
+        cursor.execute(sql, data)
+    else:
+        sql = ''' SELECT * FROM quotes ORDER BY RANDOM() LIMIT 1 '''
+        cursor.execute(sql)
+
+    row = cursor.fetchone()
+
+    quote = Quote()
+    quote.from_database(row[0], row[1], row[2], row[3], row[4])
+
+    cursor.close()
+    connection.close()
+
+    return quote
+
+def delete_quote_by_id(quote_id):
+    """ Delete quote by ID """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' DELETE FROM quotes WHERE id=? '''
+
+    data = (quote_id, )
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def quote_exists(quote_id):
+    """ Determine if quote exists """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    # Returns a 1 if row exists and 0 if not
+    sql = ''' SELECT EXISTS(SELECT 1 FROM quotes WHERE id=? LIMIT 1) '''
+
+    data = (quote_id, )
+    cursor.execute(sql, data)
+    exists = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    return exists is 1

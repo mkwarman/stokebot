@@ -13,6 +13,7 @@ import traceback
 import random
 import constants
 import karma
+import quote
 from slackclient import SlackClient
 
 # constants
@@ -70,6 +71,7 @@ IGNORE_COMMAND = ("ignore")
 LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
 TELL_COMMAND = ("tell <")
+QUOTE_COMMAND = ("quote")
 
 # global mutables
 defined_words = {}
@@ -159,7 +161,6 @@ def handle_target_user_text(words, channel, message_data, testing_mode):
 
 #Find out why we're getting unknown command
 def handle_command(text, channel, message_data):
-    print("In handle_command")
     command_caps = text.split(BOT_MATCH)[1].strip()
     command = command_caps.lower()
     print("Parsed command: " + command)
@@ -178,6 +179,8 @@ def handle_command(text, channel, message_data):
         handle_read_definition(command, channel, message_data)
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
+    elif command.startswith(QUOTE_COMMAND):
+        quote.handle_quote(command, channel)
     elif command == LIST_ITEMS_COMMAND:
         item.list_items(held_items, channel)
     elif command == LIST_VARIABLES_COMMAND:
