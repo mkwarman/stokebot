@@ -12,7 +12,7 @@ DELETE_QUOTE_SUBCOMMAND = "delete"
 
 COMMAND_NOT_UNDERSTOOD_MESSAGE = "I'm sorry, I didn't understand that!"
 
-SANITIZE_QUOTE_REGEX = "[\"\'\“\”\‘\’]+"
+SANITIZE_QUOTE_REGEX = "(^[\"\'\“\”\‘\’])|([\"\'\“\”\‘\’]$)"
 
 def handle_quote(command, channel, message_data):
     """
