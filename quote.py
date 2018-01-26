@@ -57,7 +57,7 @@ def insert_quote(split_command, channel, message_data):
     # Parse quote, removing any double or single ticks
     quote = " ".join(split_command[3:]).replace("\"", "").replace("\'", "")
 
-    response = "Ok <@" + message_data['user'] + ">, I'll remember " + author + "'s quote.'"
+    response = "Ok <@" + message_data['user'] + ">, I'll remember " + author + "'s quote."
 
     new_quote = Quote()
     new_quote.new(author, quote, channel)

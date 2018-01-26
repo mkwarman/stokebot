@@ -512,7 +512,7 @@ def get_random_quote(author=None):
     cursor = connection.cursor()
 
     if author:
-        sql = ''' SELECT * FROM quotes WHERE user=? ORDER BY RANDOM() LIMIT 1 '''
+        sql = ''' SELECT * FROM quotes WHERE author=? ORDER BY RANDOM() LIMIT 1 '''
         data = (author, )
         cursor.execute(sql, data)
     else:
