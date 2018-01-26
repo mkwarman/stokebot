@@ -521,8 +521,11 @@ def get_random_quote(author=None):
 
     row = cursor.fetchone()
 
-    quote = Quote()
-    quote.from_database(row[0], row[1], row[2], row[3], row[4])
+    if row:
+        quote = Quote()
+        quote.from_database(row[0], row[1], row[2], row[3], row[4])
+    else:
+        return None
 
     cursor.close()
     connection.close()

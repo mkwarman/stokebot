@@ -54,6 +54,7 @@ def insert_quote(split_command, channel, message_data):
 
     # Parse author
     author = split_command[2]
+
     # Parse quote, removing any double or single ticks
     quote = " ".join(split_command[3:]).replace("\"", "").replace("\'", "")
 
@@ -61,8 +62,6 @@ def insert_quote(split_command, channel, message_data):
 
     new_quote = Quote()
     new_quote.new(author, quote, channel)
-
-    # process any other misc logic
 
     dao.insert_quote(new_quote)
 
