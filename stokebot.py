@@ -180,7 +180,7 @@ def handle_command(text, channel, message_data):
     elif command.startswith(STATUS_COMMAND):
         handle_status_inquiry(channel)
     elif command.startswith(QUOTE_COMMAND):
-        quote.handle_quote(command, channel)
+        quote.handle_quote(command, channel, message_data)
     elif command == LIST_ITEMS_COMMAND:
         item.list_items(held_items, channel)
     elif command == LIST_VARIABLES_COMMAND:

@@ -11,7 +11,7 @@ DELETE_QUOTE_SUBCOMMAND = "delete"
 
 COMMAND_NOT_UNDERSTOOD_MESSAGE = "I'm sorry, I didn't understand that!"
 
-def handle_quote(command, channel):
+def handle_quote(command, channel, message_data):
     """
         Handle quote commands from users. Some examples:
 
@@ -32,7 +32,7 @@ def handle_quote(command, channel):
 
     # If command is add and there are enough elements in the split command
     if subcommand == ADD_QUOTE_SUBCOMMAND:
-        insert_quote(split_command, channel)
+        insert_quote(split_command, channel, message_data)
     # If command is to get verbose
     elif subcommand == VERBOSE_QUOTE_SUBCOMMAND:
         get_quote_verbose(split_command, channel)
@@ -44,7 +44,7 @@ def handle_quote(command, channel):
         get_quote(subcommand, channel)
 
 
-def insert_quote(split_command, channel):
+def insert_quote(split_command, channel, message_data):
     """ Parse and insert a new quote """
 
     # There should be four elements in the split command
@@ -52,9 +52,12 @@ def insert_quote(split_command, channel):
         api.send_reply(COMMAND_NOT_UNDERSTOOD_MESSAGE, channel)
         return
 
-    author = split_command[2] # parse author
-    quote = split_command[3] # parse quote
-    response = "" # response here
+    # Parse author
+    author = split_command[2]
+    # Parse quote, removing any double or single ticks
+    quote = " ".join(split_command[3:]).replace("\"", "").replace("\'", "")
+
+    response = "Ok <@" + message_data['user'] + ">, I'll remember " + author + "'s quote.'"
 
     new_quote = Quote()
     new_quote.new(author, quote, channel)
