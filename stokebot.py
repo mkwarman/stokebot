@@ -107,7 +107,7 @@ def handle_text(text, channel, message_data):
     elif 'user' in message_data and message_data['user'] not in ignored_users:
         check_user_text(text, channel, message_data, False)
 
-    return True
+    return False
 
 def check_user_text(text, channel, message_data, testing_mode):
     print("Checking user text")
@@ -172,7 +172,7 @@ def handle_command(text, channel, message_data):
 
     # Direct commands
     elif command == STOP_COMMAND:
-        return False
+        return True
     elif command.startswith(ADD_COMMAND):
         handle_add_definition(command_caps, channel, message_data)
     elif command.startswith(READ_COMMAND):
@@ -220,7 +220,7 @@ def handle_command(text, channel, message_data):
     else:
         handle_unknown_command(channel)
 
-    return True
+    return False
 
 def chance(percentage):
     return (random.randint(1, 100) <= percentage)

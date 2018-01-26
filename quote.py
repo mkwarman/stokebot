@@ -34,7 +34,7 @@ def handle_quote(command, channel):
     if subcommand == ADD_QUOTE_SUBCOMMAND:
         insert_quote(split_command, channel)
     # If command is to get verbose
-    if subcommand == VERBOSE_QUOTE_SUBCOMMAND:
+    elif subcommand == VERBOSE_QUOTE_SUBCOMMAND:
         get_quote_verbose(split_command, channel)
     # If command is to delete quote
     elif subcommand == DELETE_QUOTE_SUBCOMMAND:
