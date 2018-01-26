@@ -1,3 +1,4 @@
+# pylint: disable=E0611, C0103, R0912, W0603, W0703
 import os
 import time
 import definition_model
@@ -11,6 +12,7 @@ import re
 import traceback
 import random
 import constants
+import karma
 from slackclient import SlackClient
 
 # constants
@@ -36,7 +38,7 @@ AT_BOT_OWNER_ID = api.get_user_id(BOT_OWNER_NAME) # Get the target user's ID
 DADJOKE_CHANCE = 50
 
 # Triggers
-POSSESSIVE_TRIGGERS = ("’s","'s")
+POSSESSIVE_TRIGGERS = ("’s", "'s")
 REPLY_TRIGGER = ("reply")
 ACTION_TRIGGER = ("action")
 REACT_TRIGGER = ("react")
@@ -69,22 +71,19 @@ LISTEN_COMMAND = ("listen to")
 CHECK_COMMAND = ("check")
 TELL_COMMAND = ("tell <")
 
-MAX_KARMA_CHANGE = 5
-TOP_KARMA_SUBCOMMAND = "top"
-TOP_KARMA_LIMIT = 5
-
-# globals
-global defined_words
-global defined_phrases
-global blacklisted_words
-global ignored_users
-global held_items
+# global mutables
+defined_words = {}
+defined_phrases = {}
+blacklisted_words = []
+ignored_users = []
+held_items = []
 
 # Regexs
-ITEM_REGEX = re.compile(r'(?i)^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" + re.escape(ALT_BOT_MATCH) + ') (.+))$')
+ITEM_REGEX = re.compile(r'(?i)^(gives|takes) (?:(.+)(?: (?:from|to) (?:' + re.escape(BOT_MATCH) +
+                        "|" + re.escape(ALT_BOT_MATCH) + '))|(?:' + re.escape(BOT_MATCH) + "|" +
+                        re.escape(ALT_BOT_MATCH) + ') (.+))$')
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 DADJOKE_REGEX = re.compile(r'(?i)^i[\'\’]m ((?: ?[a-zA-z]+){0,5}) ?$')
-TAG_CHECK = re.compile(r'(<(?:@|#)[^ ]+>)')
 TELL_REGEX = re.compile(r'<(?:@|#)([a-zA-Z0-9]+)[^>]*> (.+)')
 
 # instantiate Slack & Twilio clients
@@ -100,7 +99,7 @@ def handle_text(text, channel, message_data):
         item.handle_item_operation(item_operation, GIVES_TRIGGER, MAX_HELD_ITEMS, held_items, channel, message_data)
     elif (chance(DADJOKE_CHANCE) and dadjoke_result):
         api.send_reply("Hi \"" + dadjoke_result.group(1) + "\", I'm DadBot!", channel)
-    elif (text.startswith(BOT_MATCH) and not re.search('^ ?(--|\+\+)', text[len(BOT_MATCH):])):
+    elif (text.startswith(BOT_MATCH) and not re.search(r'^ ?(--|\+\+)', text[len(BOT_MATCH):])):
         print("Received command: " + text)
         return handle_command(text, channel, message_data)
     elif 'user' in message_data and message_data['user'] not in ignored_users:
@@ -116,9 +115,9 @@ def check_user_text(text, channel, message_data, testing_mode):
     unique_words = set(words)
 
     # Check for karma changes
-    karma = KARMA_REGEX.findall(text)
-    for result in karma:
-        handle_karma_change(result, channel, message_data)
+    karma_matches = KARMA_REGEX.findall(text)
+    for result in karma_matches:
+        karma.handle_karma_change(result, channel, message_data)
 
     # Check for defined words
     for word in list(unique_words):
@@ -169,7 +168,7 @@ def handle_command(text, channel, message_data):
 
     if relation:
         handle_explicit_relation(command_caps, channel, message_data, relation)
-    
+
     # Direct commands
     elif command == STOP_COMMAND:
         return False
@@ -186,7 +185,7 @@ def handle_command(text, channel, message_data):
     elif command.startswith(VERBOSE_COMMAND):
         handle_verbose(command, channel)
     elif command.startswith(KARMA_COMMAND):
-        handle_karma(command, channel)
+        karma.handle_karma(command, channel)
     elif command.startswith(DELETE_COMMAND):
         handle_delete(command, channel, message_data)
     elif command.startswith(IGNORE_COMMAND):
@@ -221,7 +220,7 @@ def handle_command(text, channel, message_data):
     return True
 
 def chance(percentage):
-    return (random.randint(1, 100) <= percentage) 
+    return (random.randint(1, 100) <= percentage)
 
 def handle_defined_value(value, count, channel, message_data, testing_mode):
     if testing_mode:
@@ -237,8 +236,8 @@ def check_for_explicit_relation(command):
     match = pattern.search(command)
     if not match:
         return False
-    else:
-        return match.group(0)
+    # else
+    return match.group(0)
 
 def handle_explicit_relation(command, channel, message_data, relation):
     command_data = command.split(relation)
@@ -259,63 +258,6 @@ def handle_explicit_relation(command, channel, message_data, relation):
 
     add_definition(x, relation, y, channel, message_data)
 
-def handle_karma_change(karma, channel, message_data):
-    key = karma[0].lower()
-    operator = karma[1]
-    delta = len(operator) - 1
-    response = (to_first_name_if_tag(key)) + "'s karma has "
-
-    if (key == "<@" + message_data['user'].lower() + ">"):
-        # Don't let users vote on themselves
-        if (operator[0] == '+'):
-            response = "It's rude to toot your own horn."
-        else:
-            response = "Don't be so hard on yourself!"
-        api.send_reply(response, channel)
-        return
-
-    if (delta > MAX_KARMA_CHANGE):
-        api.send_reply("Max karma change of 10 points enforced!", channel)
-        delta = 10
-
-    if (operator[0] == '+'):
-        response += "increased"
-    else:
-        delta = -delta
-        response += "decreased"
-
-    dao.update_karma(key, delta)
-
-    response += " to " + str(dao.get_karma(key))
-
-    api.send_reply(response, channel)
-
-def handle_karma(text, channel):
-    key = text.split(" ")[1]
-
-    if key == TOP_KARMA_SUBCOMMAND:
-        handle_top_karma(channel)
-        return
-
-    response = to_first_name_if_tag(key)
-
-    karma = dao.get_karma(key)
-
-    if karma == None:
-        response += " has no karma score!"
-    else:
-        response += "'s karma is " + str(karma)
-
-    api.send_reply(response, channel)
-
-def handle_top_karma(channel):
-    response = "Top karma entries:"
-    top_karma_entities = dao.get_top_karma(TOP_KARMA_LIMIT)
-    for entity in top_karma_entities:
-        response += ("\n" + to_real_name_if_tag(entity[0]) + ": " + str(entity[1]))
-
-    api.send_reply(response, channel)
-
 def handle_check(command, channel, message_data):
     text = command[6:]
     check_user_text(text, channel, message_data, True)
@@ -325,7 +267,7 @@ def handle_list_variables(channel):
     for key in constants.VARS_DICT.keys():
         response += " $" + str(key)
 
-    api.send_reply(response, channel) 
+    api.send_reply(response, channel)
 
 def handle_help(channel):
     response = "Basic Commands:\n" \
@@ -481,10 +423,6 @@ def handle_read_definition(command, channel, message_data):
     # Reply definitions from the database
     reply_definitions(definitions, channel, message_data)
 
-def handle_secondary_add_definition(command, channel, message_data):
-    #command = text.split("<@" + AT_BOT_ID + ">")[1].strip()
-    command_data = command.split(" ")
-
 def handle_multi(command, command_caps, channel, message_data, command_root):
     command_data = command_caps.split(command_caps[command.index(command_root):command.index(command_root)+len(command_root)])
     x = command_data[0].strip().lower()
@@ -509,7 +447,7 @@ def handle_add_definition(command, channel, message_data):
 def add_definition(word, relation, meaning, channel, message_data):
     # Normalize word
     word = word.lower()
-    
+
     # Instantiate definition object
     definition_object = definition_model.Definition()
 
@@ -532,16 +470,16 @@ def reply_definitions(definitions, channel, message_data):
 
     if len(definitions) > 1:
         index = random.randint(0, len(definitions) - 1)
-    
+
     print("Index: " + str(index))
 
     definition = definitions[index]
 
     #for definition in definitions:
     print("sending " + str(definition) + " to " + channel)
-    
+
     definition.meaning = handle_possible_variables(definition.meaning)
-                
+
     if "<" in definition.relation:
         response = handle_special_relation(definition, channel, message_data)
     elif (definition.relation == MEANS_COMMAND):
@@ -562,7 +500,7 @@ def handle_possible_variables(definition_meaning):
                 dict_key = re.sub("[^a-zA-Z_]+", "", word)
                 if dict_key in constants.VARS_DICT:
                     definition_meaning = definition_meaning.replace((VARIABLE_TRIGGER + dict_key), constants.get_random(dict_key), 1)
- 
+
     return definition_meaning
 
 def handle_special_relation(definition, channel, message_data):
@@ -581,46 +519,9 @@ def handle_special_relation(definition, channel, message_data):
         # Given: X | React with Y
         api.add_reaction(definition.meaning, message_data, channel)
         return None
-    else:
-        # Given: X | Reply: X [relation] Y
-        return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)
-
-def to_upper_if_tag(text):
-    search_result = TAG_CHECK.search(text)
-
-    if search_result:
-        tag = search_result.group(1)
-        text = text.replace(tag, tag.upper())
-
-    return text
-
-def to_real_name_if_tag(text):
-    search_result = TAG_CHECK.search(text)
-
-    if search_result:
-        tag = search_result.group(1)
-        user_id = tag[2:-1].upper()
-        name = api.get_user_real_name(user_id)
-        if not name:
-            name = tag.upper()
-        text = text.replace(tag, name)
-
-    return text
-
-def to_first_name_if_tag(text):
-    search_result = TAG_CHECK.search(text)
-
-    if search_result:
-        tag = search_result.group(1)
-        user_id = tag[2:-1].upper()
-        name = api.get_user_first_name(user_id)
-        if name:
-            text = text.replace(tag, name)
-        else:
-            print("api.get_user_first_name returned None, checking for real_name instead")
-            text = to_real_name_if_tag(text).split(" ")[0]
-
-    return text
+    # else
+    # Given: X | Reply: X [relation] Y
+    return (definition.word + " " + definition.relation[1:-1] + " " + definition.meaning)
 
 def print_if_testing(print_text, message_data):
     if (message_data['channel'] in TESTING_CHANNEL_IDS):
@@ -659,14 +560,14 @@ def load_data():
     global blacklisted_words
     global ignored_users
     global held_items
-    
+
     defined_words = {}
     defined_phrases = {}
-    
+
     defined = dao.get_defined_words()
     for value in defined:
         add_word_or_phrase(value)
-    
+
     blacklisted_words = dao.get_blacklisted_words()
     ignored_users = dao.get_ignored_user_ids()
     held_items = dao.get_items()
@@ -677,26 +578,30 @@ def load_data():
     print("Got all blacklisted users: " + str(ignored_users))
     print("Got all held items: " + str(held_items))
 
+def connect_and_listen():
+    if slack_client.rtm_connect():
+        print ("Stokebot up and running!")
+
+        load_data()
+
+        while True:
+            text, channel, message_data = listen_for_text(slack_client.rtm_read())
+            if text and channel:
+                stop_command_received = handle_text(text, channel, message_data)
+                if stop_command_received:
+                    api.send_reply(":broken_heart:", channel)
+                    break
+            time.sleep(READ_WEBSOCKET_DELAY)
+
+        return False
+
+    print("Connection failed. Invalid Slack token or Bot ID?")
+
 if __name__ == "__main__":
-    READ_WEBSOCKET_DELAY = .5 # .5 second delay between reading from firehose
     run = True
     while run:
         try:
-            if slack_client.rtm_connect():
-                print ("Stokebot up and running!")
-
-                load_data()
-
-                while run:
-                    text, channel, message_data = listen_for_text(slack_client.rtm_read())
-                    if text and channel:
-                        run = handle_text(text, channel, message_data)
-                        if not run:
-                            api.send_reply(":broken_heart:", channel)
-                    time.sleep(READ_WEBSOCKET_DELAY)
-            else:
-                print("Connection failed. Invalid Slack token or Bot ID?")
-
+            run = connect_and_listen()
         except (KeyboardInterrupt, SystemExit):
             print ("Stopping...")
             quit()

@@ -1,26 +1,28 @@
+# pylint: disable=C0301
+""" Database related functions """
 import os
 import sqlite3
+from sqlite3 import Error
+
 import definition_model
 import blacklisted_model
 import item_model
-from slackclient import SlackClient
-from sqlite3 import Error
+import quote_model
 
-
-db_file = os.environ.get('DATABASE_FILE')
+DB_FILE = os.environ.get('DATABASE_FILE')
 
 def create_connection():
     """ create a connection to the SQLite database
-    :param db_file: database file
+    :param DB_FILE: database file
     :return: Connection object or none
     """
 
     try:
-        print(db_file)
-        connection = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES)
+        print(DB_FILE)
+        connection = sqlite3.connect(DB_FILE, detect_types=sqlite3.PARSE_DECLTYPES)
         return connection
-    except Error as e:
-        print(e)
+    except Error as error:
+        print("sqlite3 error:" + error)
 
     return None
 
@@ -44,8 +46,8 @@ def get_by_id(unique_id):
         definition.from_database(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
         return definition
-    else:
-        return None
+    #else:
+    return None
 
 def delete_by_id(unique_id):
     """ delete definition row based on input unique id """
@@ -184,8 +186,8 @@ def get_blacklisted_by_word(word):
         blacklisted = blacklisted_model.Blacklisted()
         blacklisted.from_database(row[0], row[1], row[2], row[3], row[4])
         return blacklisted
-    else:
-        return None
+    #else:
+    return None
 
 def get_blacklisted_by_id(unique_id):
     """ return blacklisted word data based on input unique id """
@@ -202,8 +204,8 @@ def get_blacklisted_by_id(unique_id):
         blacklisted = blacklisted_model.Blacklisted()
         blacklisted.from_database(row[0], row[1], row[2], row[3], row[4])
         return blacklisted
-    else:
-        return None
+    #else:
+    return None
 
 def insert_blacklisted(blacklisted):
     """ insert blacklisted word in blacklist """
@@ -369,8 +371,8 @@ def get_karma(key):
 
     if karma:
         return karma[0]
-    else:
-        return None
+    #else:
+    return None
 
 def get_top_karma(limit):
     """ get top karma entities limited by parameter """
@@ -390,15 +392,15 @@ def get_top_karma(limit):
 
 # START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS --- START ITEMS #
 
-def insert_item(item_model):
+def insert_item(item):
     """ insert new item """
 
     connection = create_connection()
     cursor = connection.cursor()
     sql = ''' INSERT INTO items(name, user_name, channel, date_time_added) values(?, ?, ?, ?) '''
 
-    data = (item_model.name, item_model.user_name, item_model.channel, item_model.date_time_added)
-    print(item_model)
+    data = (item.name, item.user_name, item.channel, item.date_time_added)
+    print(item)
     cursor.execute(sql, data)
     connection.commit()
 
@@ -461,3 +463,44 @@ def swap_items(new_item_model):
     insert_item(new_item_model)
 
     return old_item
+
+# START QUOTES --- START QUOTES --- START QUOTES --- START QUOTES --- START QUOTES --- START QUOTES --- START QUOTES #
+
+def insert_quote(quote):
+    """ insert new quote """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' INSERT INTO quotes(quote, author, channel, date_time_added) values(?, ?, ?, ?) '''
+
+    data = (quote.quote, quote.author, quote.channel, quote.date_time_added)
+    print(quote)
+    cursor.execute(sql, data)
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_quote(author):
+    """ Get quotes by author """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+    sql = ''' SELECT * FROM quotes WHERE author=?'''
+
+    data = (author, )
+    cursor.execute(sql, data)
+    rows = cursor.fetchall()
+
+    quotes = []
+
+    for row in rows:
+        quote = quote_model.Quote()
+        quote.from_database(row[0], row[1], row[2], row[3], row[4])
+
+        quotes.append(quote)
+
+    cursor.close()
+    connection.close()
+
+    return quotes
