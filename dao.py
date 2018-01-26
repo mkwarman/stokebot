@@ -505,7 +505,7 @@ def get_quotes(author):
 
     return quotes
 
-def get_random_quote(author = None):
+def get_random_quote(author=None):
     """ Get random quote (by author if present)"""
 
     connection = create_connection()
@@ -559,4 +559,4 @@ def quote_exists(quote_id):
     cursor.close()
     connection.close()
 
-    return exists is 1
+    return exists == 1

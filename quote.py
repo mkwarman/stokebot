@@ -31,13 +31,13 @@ def handle_quote(command, channel):
     subcommand = split_command[1]
 
     # If command is add and there are enough elements in the split command
-    if subcommand is ADD_QUOTE_SUBCOMMAND:
+    if subcommand == ADD_QUOTE_SUBCOMMAND:
         insert_quote(split_command, channel)
     # If command is to get verbose
-    if subcommand is VERBOSE_QUOTE_SUBCOMMAND:
+    if subcommand == VERBOSE_QUOTE_SUBCOMMAND:
         get_quote_verbose(split_command, channel)
     # If command is to delete quote
-    elif subcommand is DELETE_QUOTE_SUBCOMMAND:
+    elif subcommand == DELETE_QUOTE_SUBCOMMAND:
         delete_quote_by_id(split_command, channel)
     # If command is to get quote by author (subcommand)
     else:
@@ -69,7 +69,7 @@ def get_quote(author, channel):
     """ Handle user asking for quote by author """
 
     # If quote from user or random if requested
-    quote = dao.get_random_quote() if author is RANDOM_QUOTE_SUBCOMMAND else \
+    quote = dao.get_random_quote() if author == RANDOM_QUOTE_SUBCOMMAND else \
             dao.get_random_quote(author)
 
     if quote is None:
