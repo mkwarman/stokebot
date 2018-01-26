@@ -2,6 +2,7 @@
 import api
 import common
 import dao
+import re
 from quote_model import Quote
 
 RANDOM_QUOTE_SUBCOMMAND = "random"
@@ -10,6 +11,8 @@ ADD_QUOTE_SUBCOMMAND = "add"
 DELETE_QUOTE_SUBCOMMAND = "delete"
 
 COMMAND_NOT_UNDERSTOOD_MESSAGE = "I'm sorry, I didn't understand that!"
+
+SANITIZE_QUOTE_REGEX = "[\"\'\“\”\‘\’]+"
 
 def handle_quote(command, channel, message_data):
     """
@@ -56,7 +59,7 @@ def insert_quote(split_command, channel, message_data):
     author = split_command[2]
 
     # Parse quote, removing any double or single ticks
-    quote = " ".join(split_command[3:]).replace("\"", "").replace("\'", "")
+    quote = re.sub(SANITIZE_QUOTE_REGEX, "", " ".join(split_command[3:]))
 
     response = "Ok <@" + message_data['user'] + ">, I'll remember " + \
                common.to_first_name_if_tag(author) + "'s quote."
