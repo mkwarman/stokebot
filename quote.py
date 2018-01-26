@@ -58,10 +58,11 @@ def insert_quote(split_command, channel, message_data):
     # Parse quote, removing any double or single ticks
     quote = " ".join(split_command[3:]).replace("\"", "").replace("\'", "")
 
-    response = "Ok <@" + message_data['user'] + ">, I'll remember " + author + "'s quote."
+    response = "Ok <@" + message_data['user'] + ">, I'll remember " + \
+               common.to_first_name_if_tag(author) + "'s quote."
 
     new_quote = Quote()
-    new_quote.new(author, quote, channel)
+    new_quote.new(quote, author, channel)
 
     dao.insert_quote(new_quote)
 
