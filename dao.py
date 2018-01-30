@@ -379,7 +379,8 @@ def get_top_karma(limit):
 
     connection = create_connection()
     cursor = connection.cursor()
-    sql = ''' SELECT * FROM karma ORDER BY karma DESC LIMIT ?; '''
+    #sql = ''' SELECT * FROM karma ORDER BY karma DESC LIMIT ?; '''
+    sql = ''' SELECT * FROM karma WHERE karma IN (SELECT karma FROM karma GROUP BY karma ORDER BY karma DESC LIMIT ?) ORDER BY karma DESC; '''
 
     data = (limit, )
     cursor.execute(sql, data)
