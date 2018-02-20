@@ -25,8 +25,8 @@ def handle_karma_change(karma, channel, message_data):
         return
 
     if (delta > MAX_KARMA_CHANGE):
-        api.send_reply("Max karma change of 10 points enforced!", channel)
-        delta = 10
+        api.send_reply("Max karma change of " + str(MAX_KARMA_CHANGE) + " points enforced!", channel)
+        delta = MAX_KARMA_CHANGE
 
     if (operator[0] == '+'):
         response += "increased"
