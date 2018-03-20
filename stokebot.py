@@ -427,7 +427,7 @@ def handle_read_definition(command, channel, message_data):
     reply_definitions(definitions, channel, message_data)
 
 def handle_multi(command, command_caps, channel, message_data, command_root):
-    command_data = command_caps.split(command_caps[command.index(command_root):command.index(command_root)+len(command_root)])
+    command_data = command_caps.split(command_caps[command.index(command_root):command.index(command_root)+len(command_root)], 1)
     x = command_data[0].strip().lower()
     y = command_data[1].strip()
 
