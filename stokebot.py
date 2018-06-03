@@ -593,12 +593,11 @@ def connect_and_listen():
                 stop_command_received = handle_text(text, channel, message_data)
                 if stop_command_received:
                     api.send_reply(":broken_heart:", channel)
-                    break
+                    return False
             time.sleep(READ_WEBSOCKET_DELAY)
 
-        return False
-
     print("Connection failed. Invalid Slack token or Bot ID?")
+    return True
 
 if __name__ == "__main__":
     run = True
