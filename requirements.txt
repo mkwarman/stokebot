@@ -1,2 +1,7 @@
 slackclient
 python-dotenv
+
+# Features requirements
+# testingactions.py
+flask
+gunicorn
