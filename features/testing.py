@@ -11,11 +11,11 @@ def say_hello(data, web_client):
         text = "Hi, <@%s>!" % (data['user'])
         
 
-        helpers.postThreadMessage(web_client, channel_id, thread_ts, text)
-        #helpers.postMessage(web_client, channel_id, text)
+        helpers.post_thread_message(web_client, channel_id, thread_ts, text)
+        #helpers.post_message(web_client, channel_id, text)
 
 class Testing(featurebase.FeatureBase):
-    def on_message(self, payload):
+    def on_message(self, text, payload):
         data = payload['data']
         web_client = payload['web_client']
 

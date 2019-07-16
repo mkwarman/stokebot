@@ -5,5 +5,5 @@ class FeatureBase:
     def ready(self):
         pass
 
-    def on_message(self, payload):
+    def on_message(self, text, payload):
         pass

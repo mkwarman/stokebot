@@ -44,7 +44,7 @@ def load_feature(feature):
         print("Loaded feature: %s" % feature)
 
 def slack_connected(client):
-    helpers.postMessage(client, os.getenv("TEST_CHANNEL_ID"), "Hello world!")
+    helpers.post_message(client, os.getenv("TEST_CHANNEL_ID"), "Hello world!")
 
     for feature in feature_classes:
         print("telling " + str(feature) + " that we're connected to slack")
@@ -61,8 +61,13 @@ def notify_features(**payload):
         # The bot should not talk to itself
         return
     
+    text = helpers.get_text(payload)
+
+    if text is None:
+        return
+
     for feature in feature_classes:
-        feature.on_message(payload)
+        feature.on_message(text, payload)
 
 if __name__ == "__main__":
     load_features()
