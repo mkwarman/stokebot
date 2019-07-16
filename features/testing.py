@@ -21,5 +21,10 @@ class Testing(featurebase.FeatureBase):
 
         say_hello(data, web_client)
 
+    def on_command(self, command, payload):
+        if command.lower() == ("test"):
+            helpers.post_reply(payload, "I'm here!")
+            return True
+
 def get_feature_class():
     return Testing()

@@ -57,7 +57,7 @@ def ready():
 
 @slack.RTMClient.run_on(event='message')
 def notify_features(**payload):
-    if 'bot_id' in payload['data'] and payload['data']['bot_id'] == os.getenv("BOT_ID"):
+    if 'bot_id' in payload['data'] and payload['data']['bot_id'] == os.getenv("APP_ID"):
         # The bot should not talk to itself
         return
     
@@ -66,8 +66,20 @@ def notify_features(**payload):
     if text is None:
         return
 
-    for feature in feature_classes:
-        feature.on_message(text, payload)
+    bot_match = "<@{0}>".format(os.getenv("BOT_ID"))
+
+    if text.startswith(bot_match) and not (text.startswith(bot_match + "++") or text.startswith(bot_match + "--")):
+        command_matched = False 
+        # Remove bot name from the front of the text as well as any whitespace around it
+        command = text[len(bot_match) + 1:].strip()
+        for feature in feature_classes:
+            command_matched = (command_matched or feature.on_command(command, payload))
+
+        if not command_matched:
+            helpers.post_reply(payload, "I'm sorry, I didnt recognize that command :pensive:")
+    else:
+        for feature in feature_classes:
+            feature.on_message(text, payload)
 
 if __name__ == "__main__":
     load_features()
