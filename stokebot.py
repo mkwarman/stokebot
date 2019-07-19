@@ -68,6 +68,12 @@ def notify_features(**payload):
 
     bot_match = "<@{0}>".format(os.getenv("BOT_ID"))
 
+    # '/me' message
+    if 'subtype' in payload['data'] and 'me_message' == payload['data']['subtype']:
+        print("got me message")
+        for feature in feature_classes:
+            feature.on_me_message(text, payload)
+    # Command
     if text.startswith(bot_match) and not (text.startswith(bot_match + "++") or text.startswith(bot_match + "--")):
         command_matched = False 
         # Remove bot name from the front of the text as well as any whitespace around it
@@ -77,6 +83,7 @@ def notify_features(**payload):
 
         if not command_matched:
             helpers.post_reply(payload, "I'm sorry, I didnt recognize that command :pensive:")
+    # Regular message
     else:
         for feature in feature_classes:
             feature.on_message(text, payload)

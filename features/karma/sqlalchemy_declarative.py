@@ -9,6 +9,6 @@ class Karma(Base):
     subject = Column(String(128), primary_key=True)
     karma = Column(Integer, nullable=False)
 
-engine = create_engine("sqlite:///karma.db")
+engine = create_engine("sqlite:///data/karma.db")
 
 Base.metadata.create_all(engine)

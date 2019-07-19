@@ -32,20 +32,56 @@ def get_text(payload):
         return payload['data']['text']
     return None
 
+def get_real_name_from_id(user_id, client):
+    user_info = client.users_info(user = user_id)
+
+    if not user_info.get('ok'):
+        return text
+
+    user = user_info.get('user')
+    if 'id' in user and user.get('id') == user_id and 'real_name' in user:
+        return user.get('real_name')
+
+    # fallback
+    return text
+
+def get_display_name_from_id(user_id, client):
+    user_info = client.users_info(user = user_id)
+
+    if not user_info.get('ok'):
+        return text
+
+    user = user_info.get('user')
+    if 'id' in user and user.get('id') == user_id and 'profile' in user and 'display_name' in user.get('profile'):
+        return user.get('profile').get('display_name')
+    elif 'id' in user and user.get('id') == user_id and 'real_name' in user:
+        return user.get('real_name')
+
+    # fallback
+    return text
+
+def get_first_name_from_id(user_id, client):
+    user_info = client.users_info(user = user_id)
+
+    if not user_info.get('ok'):
+        return text
+
+    user = user_info.get('user')
+    if 'id' in user and user.get('id') == user_id and 'profile' in user and 'first_name' in user.get('profile'):
+        return user.get('profile').get('first_name')
+    elif 'id' in user and user.get('id') == user_id and 'real_name' in user:
+        return user.get('real_name')
+
+    # fallback
+    return text
+
 def to_real_name_if_tag(text, client):
     search_result = TAG_CHECK_REGEX.search(text)
 
     if search_result:
         tag = search_result.group(1)
         user_id = tag[2:-1].upper()
-        user_info = client.users_info(user = user_id)
-
-        if not user_info.get('ok'):
-            return text
-
-        user = user_info.get('user')
-        if 'id' in user and user.get('id') == user_id and 'real_name' in user:
-            return user.get('real_name')
+        return get_real_name_from_id(user_id, client)
 
     return text
 
@@ -55,16 +91,7 @@ def to_first_name_if_tag(text, client):
     if search_result:
         tag = search_result.group(1)
         user_id = tag[2:-1].upper()
-        user_info = client.users_info(user = user_id)
-
-        if not user_info.get('ok'):
-            return text
-
-        user = user_info.get('user')
-        if 'id' in user and user.get('id') == user_id and 'profile' in user and 'first_name' in user.get('profile'):
-            return user.get('profile').get('first_name')
-        elif 'id' in user and user.get('id') == user_id and 'real_name' in user:
-            return user.get('real_name')
+        return get_first_name_from_id(user_id, client)
 
     return text
 

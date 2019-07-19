@@ -7,7 +7,7 @@ from karma.sqlalchemy_declarative import Base
 
 # Great info here: https://www.pythoncentral.io/introductory-tutorial-python-sqlalchemy/
 
-engine = create_engine("sqlite:///karma.db")
+engine = create_engine("sqlite:///data/karma.db")
 # Bind the engine to the metadata so we can use the declartives in sqlalchemy_declarative
 Base.metadata.bind = engine
 

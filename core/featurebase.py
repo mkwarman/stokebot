@@ -11,3 +11,6 @@ class FeatureBase:
     # If a feature recognizes a command, it should return True. If not, the user will recieve a "command not recognized" message
     def on_command(self, command, payload):
         pass
+
+    def on_me_message(self, text, payload):
+        pass
