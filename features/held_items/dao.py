@@ -17,3 +17,9 @@ def insert_item(session, name, username):
 
     session.add(item)
     session.commit()
+
+def get_held_items(session):
+    items = session.query(Item.name).order_by(Item.date_time_added.asc())
+
+    # extract values from 1-element tuples
+    return [i[0] for i in items]
