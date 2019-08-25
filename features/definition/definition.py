@@ -2,7 +2,7 @@ import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core import helpers, featurebase
-from definition.dao import get_by_trigger, insert_definition, get_triggers, check_blacklist, insert_blacklist, check_ignored, insert_ignored, remove_ignored
+from definition.dao import get_by_trigger, insert_definition, get_triggers, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
 from definition.sqlalchemy_declarative import Base
 from definition.word_check import sanitize_and_split_words, find_unknown_words, check_dictionary
 
@@ -22,10 +22,12 @@ def handle_unknown_words(unknown_words, payload):
         # Check for unknown word in blacklist
         found = check_blacklist(session, word)
         if found:
+            print('found word in blacklist:', word)
             return
         # Check for unknown word in dictionary
         found = check_dictionary(word)
         if found:
+            print('found word in dictionary:', word)
             insert_blacklist(session, word, 'dictionary')
             return
         #TODO: ask for definition
@@ -33,7 +35,7 @@ def handle_unknown_words(unknown_words, payload):
 
     session.close()
 
-def handle_ignore(ignore, payload):
+def handle_ignore(should_ignore, payload):
     user = helpers.get_user_from_payload(payload)
 
     if not user:
@@ -41,13 +43,40 @@ def handle_ignore(ignore, payload):
         return
 
     session = DBSession()
-    if ignore:
+    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(user, payload['web_client']))
+
+    if should_ignore:
         insert_ignored(session, user)
+        reply += "stop "
     else:
         remove_ignored(session, user)
-    #insert_ignored(session, user) if ignore else remove_ignored(session, user)
+        reply += "resume "
+
     session.close()
-    #TODO: Update user
+    reply += "listening to you."
+    helpers.post_reply(payload, reply)
+
+def handle_blacklist(should_blacklist, trigger, payload):
+    user = helpers.get_user_from_payload(payload)
+
+    if not user:
+        # If this is not a person
+        return
+
+    session = DBSession()
+    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(user, payload['web_client']))
+
+    if should_blacklist:
+        insert_blacklist(session, trigger, user)
+        reply += "add {0} to ".format(trigger)
+    else:
+        remove_blacklist(session, trigger)
+        reply += "remove {0} from ".format(trigger)
+
+    session.close()
+    reply += "the blacklist."
+    helpers.post_reply(payload, reply)
+
 
 def is_ignored_user(payload):
     user = helpers.get_user_from_payload(payload)
@@ -91,6 +120,12 @@ class Definition(featurebase.FeatureBase):
             return True
         elif command.startswith("listen to me"):
             handle_ignore(False, payload)
+            return True
+        elif command.startswith("blacklist add"):
+            handle_blacklist(True, command[14:], payload)
+            return True
+        elif command.startswith("blacklist remove"):
+            handle_blacklist(False, command[17:], payload)
             return True
 
 def get_feature_class():

@@ -22,9 +22,21 @@ def check_blacklist(session, trigger):
     return session.query(Blacklist).filter(Blacklist.trigger == trigger).one_or_none()
 
 def insert_blacklist(session, trigger, user):
+    if check_blacklist(session, trigger):
+        return
+
     new_blacklisted = Blacklist(trigger = trigger, user = user)
 
     session.add(new_blacklisted)
+    session.commit()
+
+def remove_blacklist(session, trigger):
+    blacklisted = session.query(Blacklist).filter(Blacklist.trigger == trigger).one_or_none()
+
+    if not blacklisted:
+        return
+
+    session.delete(blacklisted)
     session.commit()
 
 def check_ignored(session, user):
