@@ -39,7 +39,8 @@ def handle_karma_change(match, payload, session):
     max_change_triggered = False
 
     # If user tried to change their own karma, reply and return without changing anything
-    if ('user' in payload['data'] and subject[2:-1] == payload['data']['user'].lower()):
+    user = helpers.get_user_from_payload(payload)
+    if (user and subject[2:-1] == user.lower()):
         reply = "It's rude to toot your own horn" if operator[0] == '+' else "Don't be so hard on yourself!"
         #helpers.post_reply(payload, reply)
         return reply

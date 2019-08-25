@@ -32,6 +32,12 @@ def get_text(payload):
         return payload['data']['text']
     return None
 
+def get_user_from_payload(payload):
+    if ('user' in payload['data']):
+        return payload['data']['user']
+
+    return None
+
 def get_real_name_from_id(user_id, client):
     user_info = client.users_info(user = user_id)
 
