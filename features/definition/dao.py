@@ -1,10 +1,11 @@
 from definition.sqlalchemy_declarative import Definition, Blacklist, Ignore, WordUsage
+from sqlalchemy.sql.expression import func
 
-def get_by_trigger(session, trigger):
+def get_definition_by_trigger(session, trigger):
     # retrieve definition entry by given trigger
-    entries = session.query(Definition).filter(Definition.trigger == trigger)
+    entry = session.query(Definition).filter(Definition.trigger == trigger).order_by(func.random()).first()
 
-    return entries
+    return entry
 
 def insert_definition(session, trigger, relation, response, user):
     new_def = Definition(trigger = trigger, relation = relation, response = response, user = user)

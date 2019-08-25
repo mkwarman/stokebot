@@ -8,5 +8,5 @@ def add_quote(session, author, quote):
     session.commit()
 
 def get_quote_by_author(session, author):
-    return session.query(Quote).filter(Quote.author == author).order_by(func.random()).one_or_none()
+    return session.query(Quote).filter(Quote.author == author).order_by(func.random()).first()
 
