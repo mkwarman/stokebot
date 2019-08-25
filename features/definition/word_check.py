@@ -1,10 +1,15 @@
 import os
 import re
+import requests
 from collections import Counter
 
-""" Some of the logic in this file is from http://norvig.com/spell-correct.html """
+try:
+    DICTIONARY_API_URL = 'http://www.dictionaryapi.com/api/v1/references/collegiate/xml/{0}?key=' + os.getenv("DEFINITION_DICTIONARY_API_KEY")
+except:
+    print('ERROR: Unable to load dictionaryapi.com token!')
+    raise
 
-DICTIONARY_API_URL = 'http://www.dictionaryapi.com/api/v1/references/collegiate/xml/{0}?key={1}'
+# Some of the logic in this file is from http://norvig.com/spell-correct.html
 
 # Def before const because we set the const using the words() method
 def words(text):
@@ -16,7 +21,6 @@ def known(words):
     return set(word for word in words if word in WORDS)
 
 def edits(word):
-    print("In edits(" + word + ")")
     """ All words one edit away from 'word' """
     letters    = 'abcdefghijklmnopqrstuvwxyz'
     splits     = [(word[:index], word[index:])           for index in range(len(word) + 1)]
@@ -48,16 +52,15 @@ def find_unknown_words(words):
     unknown_words = [word for word in unknown_words if not check_edits(word)]
     return unknown_words
 
-def check_dictionary(word, dictionary_api_key):
+def check_dictionary(word):
     """ Returns true if word found or false if not """
 
-    url = DICTIONARY_API_URL.format(word, dictionary_api_key)
-    print(url)
+    url = DICTIONARY_API_URL.format(word)
     response = requests.get(url)
     if response.ok and '<def>' in response.text:
         return True
 
-    if not reponse.ok:
+    if not response.ok:
         print("Encountered error while trying to call dictionary API")
 
     return False
