@@ -6,10 +6,9 @@ def increment(session, subject, amount):
     
     if entry is None:
         session.add(Karma(subject = subject, karma = amount))
-        session.commit()
-        return
+    else:
+        entry.karma = entry.karma + amount
 
-    entry.karma = entry.karma + amount
     session.commit()
 
 def decrement(session, subject, amount):

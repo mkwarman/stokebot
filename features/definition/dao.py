@@ -22,6 +22,16 @@ def get_triggers(session):
 def check_trigger(session, trigger):
     return session.query(Definition).filter(Definition.trigger == trigger).first()
 
+def increment_word_usage(session, trigger):
+    entry = session.query(WordUsage).filter(WordUsage.trigger == trigger).first()
+
+    if entry:
+        entry.times_used += 1
+    else:
+        session.add(WordUsage(trigger = trigger, times_used = 1))
+
+    session.commit()
+
 def check_blacklist(session, trigger):
     return session.query(Blacklist).filter(Blacklist.trigger == trigger).one_or_none()
 

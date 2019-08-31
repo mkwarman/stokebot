@@ -3,7 +3,7 @@ import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core import helpers, featurebase
-from definition.dao import get_definition_by_trigger, insert_definition, get_triggers, check_trigger, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
+from definition.dao import get_definition_by_trigger, insert_definition, get_triggers, check_trigger, increment_word_usage, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
 from definition.sqlalchemy_declarative import Base
 from definition.word_check import sanitize_and_split_words, find_unknown_words, check_dictionary
 from definition.relation_enum import RelationEnum
@@ -72,6 +72,7 @@ def handle_triggers(text, known_triggers, payload):
                 # Initialize the session if it hasnt been already
                 session = DBSession()
             found_def = get_definition_by_trigger(session, trigger)
+            increment_word_usage(session, trigger)
             def_relation = __get_relation_from_enum(RelationEnum(found_def.relation))
 
             if not found_def:
@@ -276,7 +277,7 @@ class Definition(featurebase.FeatureBase):
         # Check to see if there are any triggers in the text
         handle_triggers(text, self.triggers, payload)
 
-        if user == os.getenv('DEFINITION_TARGET_USER_ID'):
+        if user in os.getenv('DEFINITION_TARGET_USER_ID').split(','):
             # Sanitize and split words, put them in a set to remove duplicates
             distinct_words = set(sanitize_and_split_words(text))
             
