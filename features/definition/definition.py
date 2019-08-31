@@ -3,7 +3,7 @@ import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core import helpers, featurebase
-from definition.dao import get_definition_by_trigger, insert_definition, get_triggers, check_trigger, increment_word_usage, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
+from definition.dao import get_definition_by_trigger, get_all_definitions_by_trigger, insert_definition, get_triggers, check_trigger, delete_definition_by_id, increment_word_usage, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
 from definition.sqlalchemy_declarative import Base
 from definition.word_check import sanitize_and_split_words, find_unknown_words, check_dictionary
 from definition.relation_enum import RelationEnum
@@ -194,6 +194,42 @@ def handle_blacklist(should_blacklist, trigger, payload):
     reply += "the blacklist."
     helpers.post_reply(payload, reply)
 
+def handle_list_definition(command, payload):
+    session = DBSession()
+    all_results = get_all_definitions_by_trigger(session, command)
+    session.close()
+
+    reply = "I know the following definitions for {0}:".format(command)
+    
+    for result in all_results:
+        reply += "\n({0}) {1}{2}{3}".format(result.id, result.trigger, __get_relation_from_enum(result.relation), result.response)
+
+    # Reply with definition information inside a thread
+    helpers.post_reply(payload, reply, True)
+
+def handle_delete_definition(command, payload):
+    def_id = None
+    try:
+        def_id = int(command.strip())
+    except:
+        helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+        return
+
+    if not def_id:
+        helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+        return
+
+    session = DBSession()
+    delete_successful = delete_definition_by_id(session, def_id)
+    session.close()
+
+    # Reply inside thread
+    if delete_successful:
+        helpers.post_reply(payload, "Ok, I deleted definition ID " + command, True)
+        return
+    
+    helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+
 def is_ignored_user(user):
     if not user:
         # If this is not a person then just return
@@ -301,8 +337,14 @@ class Definition(featurebase.FeatureBase):
         elif lower_command.startswith("blacklist add"):
             handle_blacklist(True, command[14:], payload)
             return True
-        elif lower_command.startswith("blacklist remove"):
+        elif lower_command.startswith("blacklist remove") or lower_command.startswith("blacklist delete"):
             handle_blacklist(False, command[17:], payload)
+            return True
+        elif lower_command.startswith("definition remove") or lower_command.startswith("definition delete"):
+            handle_delete_definition(command[18:], payload)
+            return True
+        elif lower_command.startswith("definition list"):
+            handle_list_definition(command[16:], payload)
             return True
 
         for relation in RELATIONS:

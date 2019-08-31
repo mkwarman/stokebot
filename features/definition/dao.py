@@ -3,9 +3,11 @@ from sqlalchemy.sql.expression import func
 
 def get_definition_by_trigger(session, trigger):
     # retrieve definition entry by given trigger
-    entry = session.query(Definition).filter(Definition.trigger == trigger).order_by(func.random()).first()
+    return session.query(Definition).filter(Definition.trigger == trigger).order_by(func.random()).first()
 
-    return entry
+def get_all_definitions_by_trigger(session, trigger):
+    # retrieve definition entry by given trigger
+    return session.query(Definition).filter(Definition.trigger == trigger).order_by(func.random()).all()
 
 def insert_definition(session, trigger, relation, response, user):
     new_def = Definition(trigger = trigger, relation = relation, response = response, user = user)
@@ -21,6 +23,17 @@ def get_triggers(session):
 
 def check_trigger(session, trigger):
     return session.query(Definition).filter(Definition.trigger == trigger).first()
+
+def delete_definition_by_id(session, trigger_id):
+    def_to_delete = session.query(Definition).filter(Definition.id == trigger_id).one_or_none()
+
+    if def_to_delete:
+        print('found def')
+        session.delete(def_to_delete)
+        session.commit()
+        return True
+
+    return False
 
 def increment_word_usage(session, trigger):
     entry = session.query(WordUsage).filter(WordUsage.trigger == trigger).first()
