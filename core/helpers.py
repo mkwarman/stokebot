@@ -18,7 +18,6 @@ def post_thread_message(client, channel_id, thread_ts, text):
 def post_reply(payload, text, reply_in_thread = False):
     data = payload['data']
     web_client = payload['web_client']
-    rtm_client = payload['rtm_client']
     channel_id = data['channel']
     thread_ts = data['ts'] if 'ts' in data else None
 
@@ -26,6 +25,18 @@ def post_reply(payload, text, reply_in_thread = False):
         post_thread_message(web_client, channel_id, thread_ts, text)
     else:
         post_message(web_client, channel_id, text)
+
+def react_reply(emoji_name, payload):
+    data = payload['data']
+    client = payload['web_client']
+    channel_id = data['channel']
+    timestamp = data['ts']
+
+    response = client.reactions_add(
+        name=emoji_name,
+        channel=channel_id,
+        timestamp=timestamp
+    )
 
 def get_text(payload):
     if 'data' in payload and 'text' in payload['data']:

@@ -19,6 +19,9 @@ def get_triggers(session):
     # extract values from 1-element tuples
     return [i[0] for i in triggers]
 
+def check_trigger(session, trigger):
+    return session.query(Definition).filter(Definition.trigger == trigger).first()
+
 def check_blacklist(session, trigger):
     return session.query(Blacklist).filter(Blacklist.trigger == trigger).one_or_none()
 
