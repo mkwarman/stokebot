@@ -3,6 +3,7 @@ import threading
 from flask import Flask
 from core import featurebase
 
+
 def flask_thread():
     app = Flask(__name__)
 
@@ -14,6 +15,7 @@ def flask_thread():
     port = os.getenv("FLASK_PORT")
     app.run(debug=True, use_reloader=False, host=host, port=port)
 
+
 class TestingActions(featurebase.FeatureBase):
     thread = None
 
@@ -23,5 +25,5 @@ class TestingActions(featurebase.FeatureBase):
         self.thread = thread.start()
 
 # Disabled in favor of Gunicorn
-#def get_feature_class():
-#    return TestingActions()
+# def get_feature_class():
+#     return TestingActions()

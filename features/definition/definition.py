@@ -1,26 +1,34 @@
 import os
-import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core import helpers, featurebase
-from definition.dao import get_definition_by_trigger, get_all_definitions_by_trigger, insert_definition, get_triggers, check_trigger, delete_definition_by_id, increment_word_usage, check_blacklist, insert_blacklist, remove_blacklist, check_ignored, insert_ignored, remove_ignored
+from definition.dao import get_definition_by_trigger, \
+        get_all_definitions_by_trigger, insert_definition, \
+        get_triggers, check_trigger, delete_definition_by_id, \
+        increment_word_usage, check_blacklist, insert_blacklist, \
+        remove_blacklist, check_ignored, insert_ignored, remove_ignored
 from definition.sqlalchemy_declarative import Base
-from definition.word_check import sanitize_and_split_words, find_unknown_words, check_dictionary
+from definition.word_check import sanitize_and_split_words, \
+        find_unknown_words, check_dictionary
 from definition.relation_enum import RelationEnum
 
 engine = create_engine("sqlite:///data/definition.db")
-# Bind the engine to the metadata so we can use the declartives in sqlalchemy_declarative
+# Bind the engine to the metadata so we can use the declartives in
+#   sqlalchemy_declarative
 Base.metadata.bind = engine
 
 DBSession = sessionmaker(bind=engine)
-# DBSession acts as a staging area facillitating sessions, commits, rollback, etc
+# DBSession acts as a staging area facillitating sessions, commits,
+#   rollback, etc
 
 REPLY_RELATION = " &lt;reply&gt; "
 ACTION_RELATION = " &lt;action&gt; "
 REACT_RELATION = " &lt;react&gt; "
 MEANS_RELATION = " means "
 IS_RELATION = " is "
-RELATIONS = [REPLY_RELATION, ACTION_RELATION, REACT_RELATION, MEANS_RELATION, IS_RELATION]
+RELATIONS = [REPLY_RELATION, ACTION_RELATION, REACT_RELATION,
+             MEANS_RELATION, IS_RELATION]
+
 
 def get_known_triggers():
     session = DBSession()
@@ -28,14 +36,20 @@ def get_known_triggers():
     session.close()
 
     distinct_triggers = set(all_triggers)
-    print('Loaded {0} definitions for {1}'.format(len(all_triggers), len(distinct_triggers)))
+    print('Loaded {0} definitions for {1} triggers'.format(len(all_triggers),
+                                                  len(distinct_triggers)))
 
     return distinct_triggers
 
+
 def handle_add_definition(command, relation, payload):
-    # Extract trigger and response from command. Relation is passed in as identified
+    # Extract trigger and response from command.
+    # Relation is passed in as identified
     command_lower = command.lower()
-    split_command = command.split(command[command_lower.index(relation):command_lower.index(relation)+len(relation)], 1)
+    split_command = command.split(
+            command[command_lower.index(relation):
+                    command_lower.index(relation)+len(relation)],
+            1)
     trigger = split_command[0].strip()
     response = split_command[1].strip()
     user = helpers.get_user_from_payload(payload)
@@ -51,21 +65,27 @@ def handle_add_definition(command, relation, payload):
 
     session = DBSession()
     # Get the integer version of the relation before saving it to the database
-    insert_definition(session, trigger, __get_enum_from_relation(relation).value, response, user)
+    insert_definition(session, trigger,
+                      __get_enum_from_relation(relation).value, response, user)
     session.close()
 
     # Get friendly name for user, construct reply and then send it
     user_name = helpers.get_first_name_from_id(user, payload['web_client'])
-    reply = "Ok {0}, I'll remember {1}{2}{3}".format(user_name, trigger, relation, reply_response)
+    reply = "Ok {0}, I'll remember {1}{2}{3}".format(user_name, trigger,
+                                                     relation, reply_response)
     helpers.post_reply(payload, reply)
-    
+
     return trigger
 
+
 def handle_triggers(text, known_triggers, payload):
-    # We will lazily initialize the session since most messages won't contain triggers
+    # We will lazily initialize the session since most messages won't contain
+    #   triggers
     session = None
 
-    reply_triggers, action_triggers, react_triggers, means_triggers, is_triggers = [], [], [], [], []
+    reply_triggers, action_triggers, react_triggers, means_triggers, \
+        is_triggers = [], [], [], [], []
+
     for trigger in known_triggers:
         if trigger in text:
             if not session:
@@ -73,7 +93,8 @@ def handle_triggers(text, known_triggers, payload):
                 session = DBSession()
             found_def = get_definition_by_trigger(session, trigger)
             increment_word_usage(session, trigger)
-            def_relation = __get_relation_from_enum(RelationEnum(found_def.relation))
+            def_relation = __get_relation_from_enum(RelationEnum(
+                found_def.relation))
 
             if not found_def:
                 # This shouldnt happen
@@ -109,7 +130,9 @@ def handle_triggers(text, known_triggers, payload):
     __handle_means_trigger(means_triggers, payload)
     __handle_is_trigger(is_triggers, payload)
 
-    #TODO: Consider sorting replies to correspond with trigger location in original message
+    # TODO: Consider sorting replies to correspond with trigger location
+    #   in original message
+
 
 def handle_unknown_words(unknown_words, user, payload):
     session = DBSession()
@@ -136,10 +159,12 @@ def handle_unknown_words(unknown_words, user, payload):
     if (len(words_to_define) > 0):
         ask_for_definitions(words_to_define, user, payload)
 
+
 def ask_for_definitions(words_to_define, user, payload):
     message = "Hey <@{0}>, what ".format(user)
 
-    # For multiple words, ask for all of their definitions at once. Otherwise just as for one
+    # For multiple words, ask for all of their definitions at once.
+    # Otherwise just as for one
     if (len(words_to_define) == 1):
         message += "does \"{0}\" mean?".format(words_to_define[0])
     elif (len(words_to_define) > 1):
@@ -150,7 +175,9 @@ def ask_for_definitions(words_to_define, user, payload):
         # This shouldn't happen, but handle it if it does
         return
 
-    helpers.post_message(payload['web_client'], os.getenv('TEST_CHANNEL_ID'), message)
+    helpers.post_message(payload['web_client'], os.getenv('TEST_CHANNEL_ID'),
+                         message)
+
 
 def handle_ignore(should_ignore, payload):
     user = helpers.get_user_from_payload(payload)
@@ -160,7 +187,8 @@ def handle_ignore(should_ignore, payload):
         return
 
     session = DBSession()
-    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(user, payload['web_client']))
+    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(
+        user, payload['web_client']))
 
     if should_ignore:
         insert_ignored(session, user)
@@ -173,6 +201,7 @@ def handle_ignore(should_ignore, payload):
     reply += "listening to you."
     helpers.post_reply(payload, reply)
 
+
 def handle_blacklist(should_blacklist, trigger, payload):
     user = helpers.get_user_from_payload(payload)
 
@@ -181,7 +210,8 @@ def handle_blacklist(should_blacklist, trigger, payload):
         return
 
     session = DBSession()
-    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(user, payload['web_client']))
+    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(
+        user, payload['web_client']))
 
     if should_blacklist:
         insert_blacklist(session, trigger, user)
@@ -194,29 +224,41 @@ def handle_blacklist(should_blacklist, trigger, payload):
     reply += "the blacklist."
     helpers.post_reply(payload, reply)
 
+
 def handle_list_definition(command, payload):
     session = DBSession()
     all_results = get_all_definitions_by_trigger(session, command)
     session.close()
 
     reply = "I know the following definitions for {0}:".format(command)
-    
+
     for result in all_results:
-        reply += "\n({0}) {1}{2}{3}".format(result.id, result.trigger, __get_relation_from_enum(result.relation), result.response)
+        reply += "\n({0}) {1}{2}{3}".format(
+                result.id,
+                result.trigger,
+                __get_relation_from_enum(result.relation),
+                result.response)
 
     # Reply with definition information inside a thread
     helpers.post_reply(payload, reply, True)
+
 
 def handle_delete_definition(command, payload):
     def_id = None
     try:
         def_id = int(command.strip())
-    except:
-        helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+    except ValueError:
+        helpers.post_reply(
+                payload,
+                "I'm sorry, I couldnt find a definition with that ID",
+                True)
         return
 
     if not def_id:
-        helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+        helpers.post_reply(
+                payload,
+                "I'm sorry, I couldnt find a definition with that ID",
+                True)
         return
 
     session = DBSession()
@@ -225,10 +267,14 @@ def handle_delete_definition(command, payload):
 
     # Reply inside thread
     if delete_successful:
-        helpers.post_reply(payload, "Ok, I deleted definition ID " + command, True)
+        helpers.post_reply(
+                payload, "Ok, I deleted definition ID " + command, True)
         return
-    
-    helpers.post_reply(payload, "I'm sorry, I couldnt find a definition with that ID", True)
+
+    helpers.post_reply(
+            payload,
+            "I'm sorry, I couldnt find a definition with that ID", True)
+
 
 def is_ignored_user(user):
     if not user:
@@ -241,6 +287,7 @@ def is_ignored_user(user):
 
     return True if ignored else False
 
+
 def __get_enum_from_relation(relation):
     if relation == REPLY_RELATION:
         return RelationEnum.REPLY
@@ -251,6 +298,7 @@ def __get_enum_from_relation(relation):
     elif relation == MEANS_RELATION:
         return RelationEnum.MEANS
     return RelationEnum.IS
+
 
 def __get_relation_from_enum(relation):
     if relation == RelationEnum.REPLY:
@@ -263,17 +311,21 @@ def __get_relation_from_enum(relation):
         return MEANS_RELATION
     return IS_RELATION
 
+
 def __handle_react_trigger(triggers, payload):
     for trigger in triggers:
         helpers.react_reply(trigger.response, payload)
+
 
 def __handle_action_trigger(triggers, payload):
     for trigger in triggers:
         helpers.post_reply(payload, "_{0}_".format(trigger.response))
 
+
 def __handle_reply_trigger(triggers, payload):
     for trigger in triggers:
         helpers.post_reply(payload, "{0}".format(trigger.response))
+
 
 def __handle_means_trigger(triggers, payload):
     if len(triggers) < 1:
@@ -283,9 +335,11 @@ def __handle_means_trigger(triggers, payload):
     for i, trigger in enumerate(triggers):
         if i > 0:
             reply += "\n"
-        reply += ("*{0}* means _{1}_".format(trigger.trigger, trigger.response))
+        reply += ("*{0}* means _{1}_".format(
+            trigger.trigger, trigger.response))
 
     helpers.post_reply(payload, reply)
+
 
 def __handle_is_trigger(triggers, payload):
     if len(triggers) < 1:
@@ -298,6 +352,7 @@ def __handle_is_trigger(triggers, payload):
         reply += ("{0} is {1}".format(trigger.trigger, trigger.response))
 
     helpers.post_reply(payload, reply)
+
 
 class Definition(featurebase.FeatureBase):
     def __init__(self):
@@ -316,12 +371,13 @@ class Definition(featurebase.FeatureBase):
         if user in os.getenv('DEFINITION_TARGET_USER_ID').split(','):
             # Sanitize and split words, put them in a set to remove duplicates
             distinct_words = set(sanitize_and_split_words(text))
-            
+
             # Remove known triggers from the set
             for trigger in self.triggers:
                 distinct_words.discard(trigger)
 
-            # Find unknown words from those that remain, and handle them if found
+            # Find unknown words from those that remain,
+            #   and handle them if found
             unknown_words = find_unknown_words(distinct_words)
             if unknown_words:
                 handle_unknown_words(unknown_words, user, payload)
@@ -337,10 +393,12 @@ class Definition(featurebase.FeatureBase):
         elif lower_command.startswith("blacklist add"):
             handle_blacklist(True, command[14:], payload)
             return True
-        elif lower_command.startswith("blacklist remove") or lower_command.startswith("blacklist delete"):
+        elif lower_command.startswith("blacklist remove") \
+                or lower_command.startswith("blacklist delete"):
             handle_blacklist(False, command[17:], payload)
             return True
-        elif lower_command.startswith("definition remove") or lower_command.startswith("definition delete"):
+        elif lower_command.startswith("definition remove") \
+                or lower_command.startswith("definition delete"):
             handle_delete_definition(command[18:], payload)
             return True
         elif lower_command.startswith("definition list"):
@@ -349,14 +407,17 @@ class Definition(featurebase.FeatureBase):
 
         for relation in RELATIONS:
             if relation in lower_command:
-                new_definition = handle_add_definition(command, relation, payload)
+                new_definition = handle_add_definition(
+                        command, relation, payload)
                 if not new_definition:
-                    # We were unable to add the new definition, so something was wrong with the command
+                    # We were unable to add the new definition,
+                    #   so something was wrong with the command
                     return False
                 self.triggers.add(new_definition)
                 return True
 
         return False
+
 
 def get_feature_class():
     return Definition()

@@ -2,11 +2,13 @@ import re
 
 TAG_CHECK_REGEX = re.compile(r'(<(?:@|#)[^ ]+>)')
 
+
 def post_message(client, channel_id, text):
     client.chat_postMessage(
         channel=channel_id,
         text=text
     )
+
 
 def post_thread_message(client, channel_id, thread_ts, text):
     client.chat_postMessage(
@@ -15,7 +17,8 @@ def post_thread_message(client, channel_id, thread_ts, text):
         text=text
     )
 
-def post_reply(payload, text, reply_in_thread = False):
+
+def post_reply(payload, text, reply_in_thread=False):
     data = payload['data']
     web_client = payload['web_client']
     channel_id = data['channel']
@@ -26,22 +29,25 @@ def post_reply(payload, text, reply_in_thread = False):
     else:
         post_message(web_client, channel_id, text)
 
+
 def react_reply(emoji_name, payload):
     data = payload['data']
     client = payload['web_client']
     channel_id = data['channel']
     timestamp = data['ts']
 
-    response = client.reactions_add(
+    client.reactions_add(
         name=emoji_name,
         channel=channel_id,
         timestamp=timestamp
     )
 
+
 def get_text(payload):
     if 'data' in payload and 'text' in payload['data']:
         return payload['data']['text']
     return None
+
 
 def get_user_from_payload(payload):
     if ('user' in payload['data']):
@@ -49,48 +55,47 @@ def get_user_from_payload(payload):
 
     return None
 
+
 def get_real_name_from_id(user_id, client):
-    user_info = client.users_info(user = user_id)
+    user_info = client.users_info(user=user_id)
 
-    if not user_info.get('ok'):
-        return text
+    if user_info.get('ok'):
+        user = user_info.get('user')
+        if 'id' in user and user.get('id') == user_id and 'real_name' in user:
+            return user.get('real_name')
 
-    user = user_info.get('user')
-    if 'id' in user and user.get('id') == user_id and 'real_name' in user:
-        return user.get('real_name')
+    return None
 
-    # fallback
-    return text
 
 def get_display_name_from_id(user_id, client):
-    user_info = client.users_info(user = user_id)
+    user_info = client.users_info(user=user_id)
 
-    if not user_info.get('ok'):
-        return text
+    if user_info.get('ok'):
+        user = user_info.get('user')
+        if 'id' in user and user.get('id') == user_id and 'profile' in user \
+                and 'display_name' in user.get('profile'):
+            return user.get('profile').get('display_name')
+        elif 'id' in user and user.get('id') == user_id \
+                and 'real_name' in user:
+            return user.get('real_name')
 
-    user = user_info.get('user')
-    if 'id' in user and user.get('id') == user_id and 'profile' in user and 'display_name' in user.get('profile'):
-        return user.get('profile').get('display_name')
-    elif 'id' in user and user.get('id') == user_id and 'real_name' in user:
-        return user.get('real_name')
+    return None
 
-    # fallback
-    return text
 
 def get_first_name_from_id(user_id, client):
-    user_info = client.users_info(user = user_id)
+    user_info = client.users_info(user=user_id)
 
-    if not user_info.get('ok'):
-        return text
+    if user_info.get('ok'):
+        user = user_info.get('user')
+        if 'id' in user and user.get('id') == user_id \
+                and 'profile' in user and 'first_name' in user.get('profile'):
+            return user.get('profile').get('first_name')
+        elif 'id' in user and user.get('id') == user_id \
+                and 'real_name' in user:
+            return user.get('real_name')
 
-    user = user_info.get('user')
-    if 'id' in user and user.get('id') == user_id and 'profile' in user and 'first_name' in user.get('profile'):
-        return user.get('profile').get('first_name')
-    elif 'id' in user and user.get('id') == user_id and 'real_name' in user:
-        return user.get('real_name')
+    return None
 
-    # fallback
-    return text
 
 def to_real_name_if_tag(text, client):
     search_result = TAG_CHECK_REGEX.search(text)
@@ -102,6 +107,7 @@ def to_real_name_if_tag(text, client):
 
     return text
 
+
 def to_first_name_if_tag(text, client):
     search_result = TAG_CHECK_REGEX.search(text)
 
@@ -111,4 +117,3 @@ def to_first_name_if_tag(text, client):
         return get_first_name_from_id(user_id, client)
 
     return text
-

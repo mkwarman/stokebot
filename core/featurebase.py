@@ -9,7 +9,8 @@ class FeatureBase:
         pass
 
     # If a feature recognizes a command, it should return True.
-    # If no features return True, the user will recieve a "command not recognized" message
+    # If no features return True, the user will recieve a "command not
+    #   recognized message
     def on_command(self, command, payload):
         pass
 

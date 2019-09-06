@@ -1,0 +1,10 @@
+slackclient
+python-dotenv
+
+# Features requirements
+# testingactions.py
+flask
+gunicorn
+
+# definition feature
+requests

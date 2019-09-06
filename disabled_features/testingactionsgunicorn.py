@@ -1,5 +1,4 @@
 import os
-import threading
 from flask import Flask, request
 from core import helpers, featurebase
 from gunicorn.app.base import BaseApplication
@@ -7,26 +6,28 @@ from gunicorn.six import iteritems
 
 
 def get_config():
-    
+
     host = os.getenv("LISTEN_HOST")
     port = os.getenv("LISTEN_PORT")
-    
+
     config = {
         'bind': '%s:%s' % (host, port),
         'workers': 1
     }
-    
+
     return config
+
 
 def test_post(client):
     helpers.postMessage(client, os.getenv("TEST_CHANNEL_ID"), "Test message")
     return "ok"
 
+
 class StandaloneApplication(BaseApplication):
     # Gunicorn stuff
     def __init__(self, options=None):
         self.options = options or {}
-        self.application = self.get_app() 
+        self.application = self.get_app()
         super(StandaloneApplication, self).__init__()
 
     def load_config(self):
@@ -63,6 +64,7 @@ class StandaloneApplication(BaseApplication):
 
         return app
 
+
 class ActionListener(featurebase.FeatureBase):
     def __init__(self):
         config = get_config()
@@ -74,6 +76,7 @@ class ActionListener(featurebase.FeatureBase):
 
     def ready(self):
         self.app.run()
+
 
 def get_feature_class():
     return ActionListener()

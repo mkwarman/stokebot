@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class RelationEnum(Enum):
     REPLY = 0
     ACTION = 1
