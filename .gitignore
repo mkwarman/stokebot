@@ -128,3 +128,6 @@ dmypy.json
 
 # sqlite databases
 *.db
+
+# vsvode
+.vscode

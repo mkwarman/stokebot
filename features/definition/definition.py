@@ -36,8 +36,8 @@ def get_known_triggers():
     session.close()
 
     distinct_triggers = set(all_triggers)
-    print('Loaded {0} definitions for {1} triggers'.format(len(all_triggers),
-                                                  len(distinct_triggers)))
+    print('Loaded {0} definitions for {1} triggers'
+          .format(len(all_triggers), len(distinct_triggers)))
 
     return distinct_triggers
 
