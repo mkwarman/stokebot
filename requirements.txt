@@ -1,5 +1,6 @@
 slackclient
 python-dotenv
+sqlalchemy
 
 # Features requirements
 # testingactions.py

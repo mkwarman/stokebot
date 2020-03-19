@@ -1,4 +1,5 @@
 import os
+import definition.constants
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core import helpers, featurebase
@@ -28,6 +29,7 @@ MEANS_RELATION = " means "
 IS_RELATION = " is "
 RELATIONS = [REPLY_RELATION, ACTION_RELATION, REACT_RELATION,
              MEANS_RELATION, IS_RELATION]
+VARIABLE_TRIGGER = "$"
 
 
 def get_known_triggers():
@@ -83,8 +85,8 @@ def handle_triggers(text, known_triggers, payload):
     #   triggers
     session = None
 
-    reply_triggers, action_triggers, react_triggers, means_triggers, \
-        is_triggers = [], [], [], [], []
+    reply_responses, action_responses, react_responses, means_responses, \
+        is_responses = [], [], [], [], []
 
     for trigger in known_triggers:
         if trigger in text:
@@ -100,21 +102,22 @@ def handle_triggers(text, known_triggers, payload):
                 # This shouldnt happen
                 print("Received falsy definition relation from dao!")
 
-            # reply_triggers
+            # reply_responses
             if def_relation == REPLY_RELATION:
-                reply_triggers.append(found_def)
-            # action_triggers
+                reply_responses.append(found_def.response)
+            # action_responses
             elif def_relation == ACTION_RELATION:
-                action_triggers.append(found_def)
-            # reaction_triggers
+                action_responses.append(found_def.response)
+            # reaction_responses
             elif def_relation == REACT_RELATION:
-                react_triggers.append(found_def)
-            # means_triggers
+                react_responses.append(
+                        __check_for_variables(found_def.response))
+            # means_responses
             elif def_relation == MEANS_RELATION:
-                means_triggers.append(found_def)
-            # is_triggers
+                means_responses.append((found_def.trigger, found_def.response))
+            # is_responses
             elif def_relation == IS_RELATION:
-                is_triggers.append(found_def)
+                is_responses.append((found_def.trigger, found_def.response))
             else:
                 # this shouldnt happen
                 return
@@ -124,11 +127,11 @@ def handle_triggers(text, known_triggers, payload):
         session.close()
 
     # Handle all the various found triggers
-    __handle_react_trigger(react_triggers, payload)
-    __handle_action_trigger(action_triggers, payload)
-    __handle_reply_trigger(reply_triggers, payload)
-    __handle_means_trigger(means_triggers, payload)
-    __handle_is_trigger(is_triggers, payload)
+    __handle_react_responses(react_responses, payload)
+    __handle_action_responses(action_responses, payload)
+    __handle_reply_responses(reply_responses, payload)
+    __handle_means_responses(means_responses, payload)
+    __handle_is_responses(is_responses, payload)
 
     # TODO: Consider sorting replies to correspond with trigger location
     #   in original message
@@ -312,46 +315,62 @@ def __get_relation_from_enum(relation):
     return IS_RELATION
 
 
-def __handle_react_trigger(triggers, payload):
-    for trigger in triggers:
-        helpers.react_reply(trigger.response, payload)
+def __handle_react_responses(responses, payload):
+    for response in responses:
+        helpers.react_reply(response, payload)
 
 
-def __handle_action_trigger(triggers, payload):
-    for trigger in triggers:
-        helpers.post_reply(payload, "_{0}_".format(trigger.response))
+def __handle_action_responses(responses, payload):
+    for response in responses:
+        helpers.post_reply(payload, "_{0}_".format(response))
 
 
-def __handle_reply_trigger(triggers, payload):
-    for trigger in triggers:
-        helpers.post_reply(payload, "{0}".format(trigger.response))
+def __handle_reply_responses(responses, payload):
+    for response in responses:
+        helpers.post_reply(payload, "{0}".format(response))
 
 
-def __handle_means_trigger(triggers, payload):
-    if len(triggers) < 1:
+def __handle_means_responses(trigger_response_pairs, payload):
+    if len(trigger_response_pairs) < 1:
         return
 
     reply = ''
-    for i, trigger in enumerate(triggers):
+    for i, trigger_response_pair in enumerate(trigger_response_pairs):
         if i > 0:
             reply += "\n"
         reply += ("*{0}* means _{1}_".format(
-            trigger.trigger, trigger.response))
+            trigger_response_pair[0], trigger_response_pair[1]))
 
     helpers.post_reply(payload, reply)
 
 
-def __handle_is_trigger(triggers, payload):
-    if len(triggers) < 1:
+def __handle_is_responses(trigger_response_pairs, payload):
+    if len(trigger_response_pairs) < 1:
         return
 
     reply = ''
-    for i, trigger in enumerate(triggers):
+    for i, trigger_response_pair in enumerate(trigger_response_pairs):
         if i > 0:
             reply += "\n"
-        reply += ("{0} is {1}".format(trigger.trigger, trigger.response))
+        reply += ("{0} is {1}".format(trigger_response_pair[0],
+                                      trigger_response_pair[1]))
 
     helpers.post_reply(payload, reply)
+
+
+def __check_for_variables(response):
+    # Check for the trigger first since most of the time there won't be one
+    if VARIABLE_TRIGGER in response:
+        # One of the words might be a variable
+        for word in response.split(" "):
+            if word.startswith(VARIABLE_TRIGGER):
+                dict_key = word[1:]
+                if dict_key in definition.constants.VARS_DICT:
+                    response = response.replace(
+                            (VARIABLE_TRIGGER + dict_key),
+                            definition.constants.get_random(dict_key), 1)
+
+    return response
 
 
 class Definition(featurebase.FeatureBase):

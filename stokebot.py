@@ -2,6 +2,7 @@ import os
 import sys
 import pkgutil
 import slack
+import traceback
 from importlib import import_module
 from core import helpers, featurebase
 from dotenv import load_dotenv
@@ -50,7 +51,8 @@ def load_feature(feature):
 
 
 def slack_connected(client):
-    helpers.post_message(client, os.getenv("TEST_CHANNEL_ID"), "Hello world!")
+    helpers.post_message(client, os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                         "Hello world!")
 
     for feature in feature_classes:
         print("telling " + str(feature) + " that we're connected to slack")
@@ -65,44 +67,55 @@ def ready():
 
 @slack.RTMClient.run_on(event='message')
 def notify_features(**payload):
-    if 'bot_id' in payload['data'] \
-            and payload['data']['bot_id'] == os.getenv("APP_ID"):
-        # The bot should not talk to itself
-        return
+    try:
+        if 'bot_id' in payload['data'] \
+                and payload['data']['bot_id'] == os.getenv("APP_ID"):
+            # The bot should not talk to itself
+            return
 
-    text = helpers.get_text(payload)
+        text = helpers.get_text(payload)
 
-    if text is None:
-        return
+        if text is None:
+            return
 
-    # '/me' message
-    if 'subtype' in payload['data'] \
-            and 'me_message' == payload['data']['subtype']:
-        print("got me message")
-        for feature in feature_classes:
-            feature.on_me_message(text, payload)
+        # '/me' message
+        if 'subtype' in payload['data'] \
+                and 'me_message' == payload['data']['subtype']:
+            print("got me message")
+            for feature in feature_classes:
+                feature.on_me_message(text, payload)
 
-    # Command
-    if text.startswith(BOT_MATCH) and not (
-            text.startswith(BOT_MATCH + "++")
-            or text.startswith(BOT_MATCH + "--")):
-        command_matched = False
-        # Remove bot name from the front of the text as well as any whitespace
-        #   around it
-        command = text[len(BOT_MATCH) + 1:].strip()
-        for feature in feature_classes:
-            command_matched = (command_matched
-                               or feature.on_command(command, payload))
+        # Command
+        if text.startswith(BOT_MATCH) and not (
+                text.startswith(BOT_MATCH + "++")
+                or text.startswith(BOT_MATCH + "--")):
+            command_matched = False
+            # Remove bot name from the front of the text as well as any
+            #   whitespace around it
+            command = text[len(BOT_MATCH) + 1:].strip()
+            for feature in feature_classes:
+                command_matched = (command_matched
+                                   or feature.on_command(command, payload))
 
-        if not command_matched:
-            helpers.post_reply(
-                    payload,
-                    "I'm sorry, I didnt recognize that command :pensive:")
+            if not command_matched:
+                helpers.post_reply(
+                        payload,
+                        "I'm sorry, I didnt recognize that command :pensive:")
 
-    # Regular message
-    else:
-        for feature in feature_classes:
-            feature.on_message(text, payload)
+        # Regular message
+        else:
+            for feature in feature_classes:
+                feature.on_message(text, payload)
+    except (KeyboardInterrupt, SystemExit):
+        print("Stopping...")
+    except Exception as e:
+        exception_message = ("Encountered error: " + str(e) +
+                             "\nTraceback:\n```\n" +
+                             traceback.format_exc() + "```")
+        print(exception_message)
+        helpers.post_message(payload['web_client'],
+                             os.getenv("TEST_CHANNEL_ID"),
+                             exception_message)
 
 
 if __name__ == "__main__":

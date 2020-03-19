@@ -18,13 +18,16 @@ def post_thread_message(client, channel_id, thread_ts, text):
     )
 
 
-def post_reply(payload, text, reply_in_thread=False):
+def post_reply(payload, text, reply_in_thread=None):
     data = payload['data']
     web_client = payload['web_client']
     channel_id = data['channel']
     thread_ts = data['ts'] if 'ts' in data else None
 
-    if reply_in_thread:
+    # Reply in thread if instructed to do so or if no instruction was given
+    #   and the payload came from a threaded message
+    if (reply_in_thread is True or
+       (reply_in_thread is None and 'thread_ts' in data)):
         post_thread_message(web_client, channel_id, thread_ts, text)
     else:
         post_message(web_client, channel_id, text)
