@@ -80,7 +80,7 @@ def handle_add_definition(command, relation, payload):
     return trigger
 
 
-def handle_triggers(text, known_triggers, payload):
+def handle_triggers(text, distinct_words, known_triggers, payload):
     # We will lazily initialize the session since most messages won't contain
     #   triggers
     session = None
@@ -89,7 +89,17 @@ def handle_triggers(text, known_triggers, payload):
         is_responses = [], [], [], [], []
 
     for trigger in known_triggers:
-        if trigger in text:
+        '''
+        If the current trigger is a phrase trigger (contains spaces) then
+          check to see if it exists anywhere in the text as presented.
+        If the current trigger is a single word trigger then check to see
+          if it exists in the distinct set of sanitized and split words
+          from the text
+        '''
+        if trigger in (text if " " in trigger else distinct_words):
+            # Prints what trigger was found in which string/set above
+            # print("check if " + trigger + " in " + (text if " " in
+            #       trigger else str(distinct_words)))
             if not session:
                 # Initialize the session if it hasnt been already
                 session = DBSession()
@@ -392,13 +402,13 @@ class Definition(featurebase.FeatureBase):
 
         text = text.lower()
 
+        # Sanitize and split words, put them in a set to remove duplicates
+        distinct_words = set(sanitize_and_split_words(text))
+
         # Check to see if there are any triggers in the text
-        handle_triggers(text, self.triggers, payload)
+        handle_triggers(text, distinct_words, self.triggers, payload)
 
         if user in os.getenv('DEFINITION_TARGET_USER_ID').split(','):
-            # Sanitize and split words, put them in a set to remove duplicates
-            distinct_words = set(sanitize_and_split_words(text))
-
             # Remove known triggers from the set
             for trigger in self.triggers:
                 distinct_words.discard(trigger)

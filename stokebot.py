@@ -92,7 +92,6 @@ def notify_features(**payload):
                  and 'group_join' == payload['data']['subtype'])
                 or text.startswith(BOT_MATCH + "++")
                 or text.startswith(BOT_MATCH + "--")):
-            print(json.dumps(payload['data']))
             command_matched = False
             # Remove bot name from the front of the text as well as any
             #   whitespace around it
