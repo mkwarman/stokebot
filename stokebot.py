@@ -3,6 +3,7 @@ import sys
 import pkgutil
 import slack
 import traceback
+import json
 from importlib import import_module
 from core import helpers, featurebase
 from dotenv import load_dotenv
@@ -87,8 +88,11 @@ def notify_features(**payload):
 
         # Command
         if text.startswith(BOT_MATCH) and not (
-                text.startswith(BOT_MATCH + "++")
+                ('subtype' in payload['data']
+                 and 'group_join' == payload['data']['subtype'])
+                or text.startswith(BOT_MATCH + "++")
                 or text.startswith(BOT_MATCH + "--")):
+            print(json.dumps(payload['data']))
             command_matched = False
             # Remove bot name from the front of the text as well as any
             #   whitespace around it
@@ -112,9 +116,13 @@ def notify_features(**payload):
         exception_message = ("Encountered error: " + str(e) +
                              "\nTraceback:\n```\n" +
                              traceback.format_exc() + "```")
+        if 'data' in payload:
+            exception_message = (exception_message + "\nPayload Data:\n```\n" +
+                                 json.dumps(payload['data']) + "\n```")
         print(exception_message)
         helpers.post_message(payload['web_client'],
                              os.getenv("TEST_CHANNEL_ID"),
+                             # os.getenv("PRIVATE_TEST_CHANNEL_ID"),
                              exception_message)
 
 

@@ -23,7 +23,8 @@ class Testing(featurebase.FeatureBase):
         say_hello(data, web_client)
 
     def on_command(self, command, payload):
-        if command.lower() == ("test"):
+        if (command.lower() == ("test") or
+           command.lower() == ("status")):
             helpers.post_reply(payload, "I'm here!")
             return True
 

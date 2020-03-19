@@ -94,13 +94,15 @@ def handle_triggers(text, known_triggers, payload):
                 # Initialize the session if it hasnt been already
                 session = DBSession()
             found_def = get_definition_by_trigger(session, trigger)
-            increment_word_usage(session, trigger)
-            def_relation = __get_relation_from_enum(RelationEnum(
-                found_def.relation))
 
             if not found_def:
                 # This shouldnt happen
                 print("Received falsy definition relation from dao!")
+                return
+
+            increment_word_usage(session, trigger)
+            def_relation = __get_relation_from_enum(RelationEnum(
+                found_def.relation))
 
             # reply_responses
             if def_relation == REPLY_RELATION:
@@ -304,13 +306,19 @@ def __get_enum_from_relation(relation):
 
 
 def __get_relation_from_enum(relation):
-    if relation == RelationEnum.REPLY:
+    relationEnum = None
+    try:
+        relationEnum = RelationEnum(relation)
+    except (ValueError):
+        print("WARN: Encountered unknown relation: " + str(relation))
+
+    if relationEnum == RelationEnum.REPLY:
         return REPLY_RELATION
-    elif relation == RelationEnum.ACTION:
+    elif relationEnum == RelationEnum.ACTION:
         return ACTION_RELATION
-    elif relation == RelationEnum.REACT:
+    elif relationEnum == RelationEnum.REACT:
         return REACT_RELATION
-    elif relation == RelationEnum.MEANS:
+    elif relationEnum == RelationEnum.MEANS:
         return MEANS_RELATION
     return IS_RELATION
 
