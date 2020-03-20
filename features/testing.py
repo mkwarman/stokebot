@@ -28,6 +28,10 @@ class Testing(featurebase.FeatureBase):
             helpers.post_reply(payload, "I'm here!")
             return True
 
+        if (command.lower() == ("dm me")):
+            helpers.dm_reply(payload, "Lemme slide into those DMs, fam")
+            return True
+
 
 def get_feature_class():
     return Testing()

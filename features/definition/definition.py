@@ -2,7 +2,7 @@ import os
 import definition.constants
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core import helpers, featurebase
+from core import builders, featurebase, helpers
 from definition.dao import get_definition_by_trigger, \
         get_all_definitions_by_trigger, insert_definition, \
         get_triggers, check_trigger, delete_definition_by_id, \
@@ -190,8 +190,8 @@ def ask_for_definitions(words_to_define, user, payload):
         # This shouldn't happen, but handle it if it does
         return
 
-    helpers.post_message(payload['web_client'], os.getenv('TEST_CHANNEL_ID'),
-                         message)
+    # DM the target user to ask for a definition. Do not reply in thread
+    helpers.dm_reply(payload, message, False)
 
 
 def handle_ignore(should_ignore, payload):
@@ -242,7 +242,7 @@ def handle_blacklist(should_blacklist, trigger, payload):
 
 def handle_list_definition(command, payload):
     session = DBSession()
-    all_results = get_all_definitions_by_trigger(session, command)
+    all_results = get_all_definitions_by_trigger(session, command.lower())
     session.close()
 
     reply = "I know the following definitions for {0}:".format(command)
@@ -454,6 +454,61 @@ class Definition(featurebase.FeatureBase):
                 return True
 
         return False
+
+    def get_help(self):
+        bb = builders.BlocksBuilder()
+        sb = builders.SectionBuilder()
+        sb.add_text("*Adding Definitions:*\n")  # noqa: E501
+        sb.add_text("When you say: <@{botid}> _trigger_{is_relation}_response_\n")  # noqa: E501
+        sb.add_text("    • {botname} will reply: \"trigger is response\"\n")  # noqa: E501
+        sb.add_text("When you say: <@{botid}> _trigger_{means_relation}_response_\n")  # noqa: E501
+        sb.add_text("    • {botname} will reply: \"*trigger* means _response_\"\n")  # noqa: E501
+        sb.add_text("When you say: <@{botid}> _trigger_{react_relation}_emojiname_\n")  # noqa: E501
+        sb.add_text("    • {botname} will react to the trigger message with the specified emoji\n")  # noqa: E501
+        sb.add_text("When you say: <@{botid}> _trigger_{reply_relation}_response_\n")  # noqa: E501
+        sb.add_text("    • {botname} will reply: \"response\"\n")  # noqa: E501
+        sb.add_text("When you say: <@{botid}> _trigger_{action_relation}_response_\n")  # noqa: E501
+        sb.add_text("    • {botname} will reply: \"_response_\", similar to when someone uses the '/me' command\n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'),
+                       botname=os.getenv('BOT_NAME'),
+                       is_relation=IS_RELATION,
+                       means_relation=MEANS_RELATION,
+                       react_relation=REACT_RELATION,
+                       reply_relation=REPLY_RELATION,
+                       action_relation=ACTION_RELATION
+                       )
+        bb.add_block(sb.section)
+        bb.add_divider()
+
+        sb.add_text("\n*Setting Ignore:*\n")  # noqa: E501
+        sb.add_text("To make {botname} stop responding to your messages (except direct commands):\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> ignore me\n")  # noqa: E501
+        sb.add_text("To make {botname} listen to you again:\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> listen to me\n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'),
+                       botname=os.getenv('BOT_NAME')
+                       )
+        bb.add_block(sb.section)
+        bb.add_divider()
+
+        sb.add_text("\n*Managing Definitions:*\n")  # noqa: E501
+        sb.add_text("Show Responses for a trigger:\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> definition list _trigger_\n")  # noqa: E501
+        sb.add_text("Delete a trigger using ID from `definition list trigger`:\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> definition [remove, delete] _triggerid_\n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'))
+        bb.add_block(sb.section)
+        bb.add_divider()
+
+        sb.add_text("\n*Managing Blacklist:*\n")  # noqa: E501
+        sb.add_text("Add a trigger to the blacklist:\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> blacklist add _trigger_\n")  # noqa: E501
+        sb.add_text("Delete a trigger from the blacklist:\n")  # noqa: E501
+        sb.add_text("    • <@{botid}> blacklist [remove, delete] _trigger_\n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'))
+        bb.add_block(sb.section)
+
+        return bb.blocks
 
 
 def get_feature_class():

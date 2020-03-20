@@ -6,6 +6,7 @@ import traceback
 import json
 from importlib import import_module
 from core import helpers, featurebase
+from core.builders import BlocksBuilder
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -82,7 +83,6 @@ def notify_features(**payload):
         # '/me' message
         if 'subtype' in payload['data'] \
                 and 'me_message' == payload['data']['subtype']:
-            print("got me message")
             for feature in feature_classes:
                 feature.on_me_message(text, payload)
 
@@ -92,10 +92,15 @@ def notify_features(**payload):
                  and 'group_join' == payload['data']['subtype'])
                 or text.startswith(BOT_MATCH + "++")
                 or text.startswith(BOT_MATCH + "--")):
-            command_matched = False
             # Remove bot name from the front of the text as well as any
             #   whitespace around it
             command = text[len(BOT_MATCH) + 1:].strip()
+
+            if command == "help":
+                __handle_help_command(payload)
+                return
+
+            command_matched = False
             for feature in feature_classes:
                 command_matched = (command_matched
                                    or feature.on_command(command, payload))
@@ -120,9 +125,24 @@ def notify_features(**payload):
                                  json.dumps(payload['data']) + "\n```")
         print(exception_message)
         helpers.post_message(payload['web_client'],
-                             os.getenv("TEST_CHANNEL_ID"),
-                             # os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                             # os.getenv("TEST_CHANNEL_ID"),
+                             os.getenv("PRIVATE_TEST_CHANNEL_ID"),
                              exception_message)
+
+
+def __handle_help_command(payload):
+    text = ""
+
+    bb = BlocksBuilder()
+    for feature in feature_classes:
+        feature_help = feature.get_help()
+        if feature_help and len(feature_help) > 0:
+            if bb.has_block:
+                bb.add_divider()
+            bb.add_blocks(feature_help)
+
+    helpers.post_reply(payload, text,
+                       blocks=json.dumps(bb.blocks))
 
 
 if __name__ == "__main__":

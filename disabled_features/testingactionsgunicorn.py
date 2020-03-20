@@ -19,7 +19,8 @@ def get_config():
 
 
 def test_post(client):
-    helpers.postMessage(client, os.getenv("TEST_CHANNEL_ID"), "Test message")
+    helpers.postMessage(client, os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                        "Test message")
     return "ok"
 
 

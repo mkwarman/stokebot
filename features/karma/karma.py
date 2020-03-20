@@ -1,7 +1,8 @@
+import os
 import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core import helpers, featurebase
+from core import builders, featurebase, helpers
 from karma.dao import increment, decrement, get_by_subject, get_top
 from karma.sqlalchemy_declarative import Base
 
@@ -119,10 +120,36 @@ class Karma(featurebase.FeatureBase):
             handle_karma_matches(karma_matches, payload)
 
     def on_command(self, command, payload):
-        print("command:", command)
         if (command.lower().startswith('karma')):
             handle_command(command, payload)
             return True
+
+    def get_help(self):
+        bb = builders.BlocksBuilder()
+        sb = builders.SectionBuilder()
+        sb.add_text("*Awarding Karma:*\n")  # noqa: E501
+        sb.add_text("To give someone or something karma, use two or more plus signs immediately after the subject:\n")  # noqa: E501
+        sb.add_text("    • \"Great job <@{botid}>++!\" would award {botname} one karma\n")  # noqa: E501
+        sb.add_text("    • \"slackbots+++++ are the coolest\" would award \"Slackbots\" four karma\n")  # noqa: E501
+        sb.add_text("Similarly, you can use minus signs to decrement karma:\n")  # noqa: E501
+        sb.add_text("    • \"I sure hate homework-----\" would subtract four karma from \"homework\"\n")  # noqa: E501
+        sb.add_text("You can perform multiple karma operations in one message:\n")  # noqa: E501
+        sb.add_text("    • \"coffee+++ bills---\" would give \"coffee\" two karma and subtract two karma from \"bills\" \n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'),
+                       botname=os.getenv('BOT_NAME')
+                       )
+        bb.add_block(sb.section)
+        bb.add_divider()
+
+        sb.add_text("\n*Checking Karma:*\n")  # noqa: E501
+        sb.add_text("To check karma, say:\n")  # noqa: E501
+        sb.add_text("    • \"<@{botid}> karma _subject_\"\n")  # noqa: E501
+        sb.add_text("To see the karma leaderboard, say:\n")  # noqa: E501
+        sb.add_text("    • \"<@{botid}> karma top\"\n")  # noqa: E501
+        sb.format_text(botid=os.getenv('BOT_ID'))
+        bb.add_block(sb.section)
+
+        return bb.blocks
 
 
 def get_feature_class():

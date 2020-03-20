@@ -16,3 +16,8 @@ class FeatureBase:
 
     def on_me_message(self, text, payload):
         pass
+
+    # Features should use the BlocksBuilder class to create blocks that
+    #   contain help information
+    def get_help(self):
+        pass

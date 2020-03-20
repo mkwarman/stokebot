@@ -1,24 +1,20 @@
 import re
+# import json
 
 TAG_CHECK_REGEX = re.compile(r'(<(?:@|#)[^ ]+>)')
 
 
-def post_message(client, channel_id, text):
+def post_message(client, channel_id, text, thread_ts=None,
+                 blocks=None):
     client.chat_postMessage(
         channel=channel_id,
-        text=text
-    )
-
-
-def post_thread_message(client, channel_id, thread_ts, text):
-    client.chat_postMessage(
-        channel=channel_id,
+        text=text,
         thread_ts=thread_ts,
-        text=text
+        blocks=blocks
     )
 
 
-def post_reply(payload, text, reply_in_thread=None):
+def post_reply(payload, text, reply_in_thread=None, blocks=None):
     data = payload['data']
     web_client = payload['web_client']
     channel_id = data['channel']
@@ -28,7 +24,25 @@ def post_reply(payload, text, reply_in_thread=None):
     #   and the payload came from a threaded message
     if (reply_in_thread is True or
        (reply_in_thread is None and 'thread_ts' in data)):
-        post_thread_message(web_client, channel_id, thread_ts, text)
+        post_message(web_client, channel_id, text, thread_ts,
+                     blocks=blocks)
+    else:
+        post_message(web_client, channel_id, text, blocks=blocks)
+
+
+def dm_reply(payload, text, reply_in_thread=None):
+    data = payload['data']
+    web_client = payload['web_client']
+    user = data['user']
+    thread_ts = data['ts'] if 'ts' in data else None
+
+    channel_id = get_conversation_id(web_client, user)
+
+    # Reply in thread if instructed to do so or if no instruction was given
+    #   and the payload came from a threaded message
+    if (reply_in_thread is True or
+       (reply_in_thread is None and 'thread_ts' in data)):
+        post_message(web_client, channel_id, text, thread_ts)
     else:
         post_message(web_client, channel_id, text)
 
@@ -96,6 +110,17 @@ def get_first_name_from_id(user_id, client):
         elif 'id' in user and user.get('id') == user_id \
                 and 'real_name' in user:
             return user.get('real_name')
+
+    return None
+
+
+def get_conversation_id(client, user):
+    conversation_info = client.conversations_open(users=user)
+
+    if conversation_info.get('ok'):
+        conversation = conversation_info.get('channel')
+        if 'id' in conversation:
+            return conversation.get('id')
 
     return None
 

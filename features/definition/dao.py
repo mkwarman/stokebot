@@ -12,7 +12,7 @@ def get_definition_by_trigger(session, trigger):
 def get_all_definitions_by_trigger(session, trigger):
     # retrieve definition entry by given trigger
     return session.query(Definition).filter(Definition.trigger == trigger)\
-            .order_by(func.random()).all()
+            .order_by(Definition.id).all()
 
 
 def insert_definition(session, trigger, relation, response, user):
