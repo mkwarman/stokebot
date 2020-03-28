@@ -16,20 +16,22 @@ def say_hello(data, web_client):
 
 
 class Testing(featurebase.FeatureBase):
-    def on_message(self, text, payload):
-        data = payload['data']
-        web_client = payload['web_client']
+    def on_message(self, text, data, client):
+        say_hello(data, client)
 
-        say_hello(data, web_client)
-
-    def on_command(self, command, payload):
+    def on_command(self, command, data, client):
         if (command.lower() == ("test") or
            command.lower() == ("status")):
-            helpers.post_reply(payload, "I'm here!")
+            helpers.post_reply(client, data, "I'm here!")
+            return True
+
+        if (command.lower() == ("newtest")):
+            helpers.post_reply(client, data, "server test active!",
+                               override=True)
             return True
 
         if (command.lower() == ("dm me")):
-            helpers.dm_reply(payload, "Lemme slide into those DMs, fam")
+            helpers.dm_reply(client, data, "Lemme slide into those DMs, fam")
             return True
 
 

@@ -5,51 +5,52 @@ TAG_CHECK_REGEX = re.compile(r'(<(?:@|#)[^ ]+>)')
 
 
 def post_message(client, channel_id, text=None, thread_ts=None,
-                 blocks=None):
-    client.chat_postMessage(
-        channel=channel_id,
-        text=text,
-        thread_ts=thread_ts,
-        blocks=blocks
-    )
+                 blocks=None, override=False):
+    if override:
+        client.chat_postMessage(
+            channel=channel_id,
+            text=text,
+            thread_ts=thread_ts,
+            blocks=blocks
+        )
+    else:
+        data = {'channel': channel_id, 'text': text,
+                'thread_ts': thread_ts, 'blocks': blocks}
+        print("posting disabled, would have sent:\n    ", data)
 
 
-def post_reply(payload, text=None, reply_in_thread=None, blocks=None):
-    data = payload['data']
-    web_client = payload['web_client']
+def post_reply(client, data, text=None, reply_in_thread=None, blocks=None,
+               override=False):
     channel_id = data['channel']
     thread_ts = data['ts'] if 'ts' in data else None
 
     # Reply in thread if instructed to do so or if no instruction was given
-    #   and the payload came from a threaded message
+    #   and the message came from a threaded message
     if (reply_in_thread is True or
        (reply_in_thread is None and 'thread_ts' in data)):
-        post_message(web_client, channel_id, text=text, thread_ts=thread_ts,
-                     blocks=blocks)
+        post_message(client, channel_id, text=text, thread_ts=thread_ts,
+                     blocks=blocks, override=override)
     else:
-        post_message(web_client, channel_id, text=text, blocks=blocks)
+        post_message(client, channel_id, text=text, blocks=blocks,
+                     override=override)
 
 
-def dm_reply(payload, text, reply_in_thread=None):
-    data = payload['data']
-    web_client = payload['web_client']
+def dm_reply(client, data, text, reply_in_thread=None):
     user = data['user']
     thread_ts = data['ts'] if 'ts' in data else None
 
-    channel_id = get_conversation_id(web_client, user)
+    channel_id = get_conversation_id(client, user)
 
     # Reply in thread if instructed to do so or if no instruction was given
-    #   and the payload came from a threaded message
+    #   and the message came from a threaded message
     if (reply_in_thread is True or
        (reply_in_thread is None and 'thread_ts' in data)):
-        post_message(web_client, channel_id, text, thread_ts)
+        post_message(client, channel_id, text, thread_ts)
     else:
-        post_message(web_client, channel_id, text)
+        post_message(client, channel_id, text)
 
 
-def react_reply(payload, emoji_name):
-    data = payload['data']
-    client = payload['web_client']
+def react_reply(client, data, emoji_name):
     channel_id = data['channel']
     timestamp = data['ts']
 
@@ -60,15 +61,15 @@ def react_reply(payload, emoji_name):
     )
 
 
-def get_text(payload):
-    if 'data' in payload and 'text' in payload['data']:
-        return payload['data']['text']
+def get_text(data):
+    if 'text' in data:
+        return data['text']
     return None
 
 
-def get_user_from_payload(payload):
-    if ('user' in payload['data']):
-        return payload['data']['user']
+def get_user_from_data(data):
+    if ('user' in data):
+        return data['user']
 
     return None
 

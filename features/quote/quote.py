@@ -20,7 +20,7 @@ QUOTE_TRIGGER = 'quote'
 DATE_FORMAT = "%m/%d/%y"
 
 
-def handle_add(command, payload):
+def handle_add(command, data, client):
     print("got quote add")
     split_command = command.split("\"")
     author = split_command[0].strip()
@@ -31,10 +31,10 @@ def handle_add(command, payload):
     session.close()
 
     reply = "Ok, I saved quote: \"{0}\" by {1}".format(quote, author)
-    helpers.post_reply(payload, reply)
+    helpers.post_reply(client, data, reply)
 
 
-def handle_get(command, payload):
+def handle_get(command, data, client):
     print("got quote get")
     author = command
     print("looking for quotes by author {0}".format(author))
@@ -46,17 +46,17 @@ def handle_get(command, payload):
              .format(quote.quote, quote.author,
                      quote.date_time_added.strftime(DATE_FORMAT))
              if quote else "I don't know any quotes by {0}".format(author))
-    helpers.post_reply(payload, reply)
+    helpers.post_reply(client, data, reply)
 
 
 class Quotes(featurebase.FeatureBase):
-    def on_command(self, command, payload):
+    def on_command(self, command, data, client):
         if command.lower().startswith(QUOTE_TRIGGER):
             stripped_command = command[len(QUOTE_TRIGGER):].strip()
             if "\"" in command:
-                handle_add(stripped_command, payload)
+                handle_add(stripped_command, data, client)
             else:
-                handle_get(stripped_command, payload)
+                handle_get(stripped_command, data, client)
             return True
 
 
