@@ -27,6 +27,8 @@ EMOJI_REGEX = re.compile(r":[^: ]+:|([0-9]{1,2}(:[0-9]{1,2})?(am|pm))")
 SYMBOLS_REGEX = re.compile(r"[^a-z'-]+")
 COMBINED_WORDS_REGEX = re.compile(r"[a-z]*[_\-']+[a-z]*")
 
+REACTIONS_REGEX = re.compile(r"(?:\:([0-9a-z+_']+)\:)")
+
 
 def known(words):
     return set(word for word in words if word in WORDS)
@@ -70,6 +72,10 @@ def find_unknown_words(words):
                      and word not in known_words)]
     unknown_words = [word for word in unknown_words if not check_edits(word)]
     return unknown_words
+
+
+def find_reactions(text):
+    return re.findall(REACTIONS_REGEX, text)
 
 
 def check_dictionary(word):

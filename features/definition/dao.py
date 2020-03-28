@@ -40,8 +40,19 @@ def delete_definition_by_id(session, trigger_id):
             .filter(Definition.id == trigger_id).one_or_none()
 
     if def_to_delete:
-        print('found def')
         session.delete(def_to_delete)
+        session.commit()
+        return True
+
+    return False
+
+
+def delete_definition_by_trigger(session, trigger):
+    def_to_delete = session.query(Definition)\
+            .filter(Definition.trigger == trigger).all()
+
+    if def_to_delete and 1 == len(def_to_delete):
+        session.delete(def_to_delete[0])
         session.commit()
         return True
 

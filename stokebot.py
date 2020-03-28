@@ -125,8 +125,8 @@ def notify_features(**payload):
                                  json.dumps(payload['data']) + "\n```")
         print(exception_message)
         helpers.post_message(payload['web_client'],
-                             # os.getenv("TEST_CHANNEL_ID"),
-                             os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                             os.getenv("TEST_CHANNEL_ID"),
+                             # os.getenv("PRIVATE_TEST_CHANNEL_ID"),
                              exception_message)
 
 

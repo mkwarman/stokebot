@@ -49,3 +49,30 @@ class SectionBuilder():
 
     def format_text(self, **kwargs):
         self._text = "".join(self._text).format(**kwargs)
+
+
+class ActionsBuilder():
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self._elements = []
+
+    @property
+    def actions(self):
+        elements = "".join(self._elements)
+        self.reset()
+        return {
+            "type": "actions",
+            "elements": elements
+        }
+
+    def add_button(self, text, value):
+        self._elements.append({
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": text
+            },
+            "value": value
+        })

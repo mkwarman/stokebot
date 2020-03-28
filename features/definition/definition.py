@@ -2,15 +2,25 @@ import os
 import definition.constants
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from functools import reduce
 from core import builders, featurebase, helpers
 from definition.dao import get_definition_by_trigger, \
-        get_all_definitions_by_trigger, insert_definition, \
-        get_triggers, check_trigger, delete_definition_by_id, \
-        increment_word_usage, check_blacklist, insert_blacklist, \
-        remove_blacklist, check_ignored, insert_ignored, remove_ignored
+                           get_all_definitions_by_trigger, \
+                           insert_definition, \
+                           get_triggers, \
+                           check_trigger, \
+                           delete_definition_by_id, \
+                           delete_definition_by_trigger, \
+                           increment_word_usage, \
+                           check_blacklist, \
+                           insert_blacklist, \
+                           remove_blacklist, \
+                           check_ignored, \
+                           insert_ignored, \
+                           remove_ignored
 from definition.sqlalchemy_declarative import Base
 from definition.word_check import sanitize_and_split_words, \
-        find_unknown_words, check_dictionary
+        find_unknown_words, find_reactions, check_dictionary
 from definition.relation_enum import RelationEnum
 
 engine = create_engine("sqlite:///data/definition.db")
@@ -30,6 +40,13 @@ IS_RELATION = " is "
 RELATIONS = [REPLY_RELATION, ACTION_RELATION, REACT_RELATION,
              MEANS_RELATION, IS_RELATION]
 VARIABLE_TRIGGER = "$"
+
+# Maximum reactions to allow for one trigger
+MAX_TRIGGER_REACTIONS = 10
+
+# Maximum total reactions to attempt to apply to one message with
+#   potentially multiple triggers
+MAX_TOTAL_REACTIONS = 23
 
 
 def get_known_triggers():
@@ -62,7 +79,17 @@ def handle_add_definition(command, relation, payload):
     reply_response = response
     if relation == REACT_RELATION:
         # Sanitize emojis since the api expects just their name without colons
-        response = response.replace(':', '')
+        reactions = find_reactions(response)
+        if reactions and MAX_TRIGGER_REACTIONS < len(reactions):
+            helpers.post_reply(payload,
+                               "Wow that's a lot of emoji! " +
+                               "You'll need to keep it under " +
+                               str(MAX_TRIGGER_REACTIONS) + ", please.",
+                               reply_in_thread=True)
+            return
+        response = ','.join(reactions)
+
+        # TODO: Handle max reactions
         # TODO: validate react definitions (ensure emoji exists)
 
     session = DBSession()
@@ -245,6 +272,11 @@ def handle_list_definition(command, payload):
     all_results = get_all_definitions_by_trigger(session, command.lower())
     session.close()
 
+    if not all_results or 1 > len(all_results):
+        reply = "Hmm, I don't know any definitions for {0}".format(command)
+        helpers.post_reply(payload, reply, reply_in_thread=True)
+        return
+
     reply = "I know the following definitions for {0}:".format(command)
 
     for result in all_results:
@@ -254,8 +286,7 @@ def handle_list_definition(command, payload):
                 __get_relation_from_enum(result.relation),
                 result.response)
 
-    # Reply with definition information inside a thread
-    helpers.post_reply(payload, reply, True)
+    helpers.post_reply(payload, reply, reply_in_thread=True)
 
 
 def handle_delete_definition(command, payload):
@@ -263,32 +294,14 @@ def handle_delete_definition(command, payload):
     try:
         def_id = int(command.strip())
     except ValueError:
-        helpers.post_reply(
-                payload,
-                "I'm sorry, I couldnt find a definition with that ID",
-                True)
-        return
+        pass
 
-    if not def_id:
-        helpers.post_reply(
-                payload,
-                "I'm sorry, I couldnt find a definition with that ID",
-                True)
-        return
-
-    session = DBSession()
-    delete_successful = delete_definition_by_id(session, def_id)
-    session.close()
-
-    # Reply inside thread
-    if delete_successful:
-        helpers.post_reply(
-                payload, "Ok, I deleted definition ID " + command, True)
-        return
-
-    helpers.post_reply(
-            payload,
-            "I'm sorry, I couldnt find a definition with that ID", True)
+    if def_id:
+        # If def_id was an integer ID of a trigger
+        __delete_definition_by_id(def_id, command, payload)
+    else:
+        # If def_id wasn't an integer, maybe it is the trigger itself
+        __delete_definition_by_trigger(command, payload)
 
 
 def is_ignored_user(user):
@@ -334,8 +347,20 @@ def __get_relation_from_enum(relation):
 
 
 def __handle_react_responses(responses, payload):
-    for response in responses:
-        helpers.react_reply(response, payload)
+    if len(responses) < 1:
+        return
+
+    all_reactions = reduce(lambda x, y: x+','+y, responses)
+
+    seen = set()
+    distinct_reactions = [x for x in all_reactions.split(',')
+                          if x not in seen and not seen.add(x)]
+
+    if MAX_TOTAL_REACTIONS < len(distinct_reactions):
+        distinct_reactions = distinct_reactions[:MAX_TOTAL_REACTIONS]
+
+    for reaction in distinct_reactions:
+        helpers.react_reply(payload, reaction)
 
 
 def __handle_action_responses(responses, payload):
@@ -374,6 +399,44 @@ def __handle_is_responses(trigger_response_pairs, payload):
                                       trigger_response_pair[1]))
 
     helpers.post_reply(payload, reply)
+
+
+def __delete_definition_by_id(def_id, command, payload):
+    session = DBSession()
+    delete_successful = delete_definition_by_id(session, def_id)
+    session.close()
+
+    # Reply inside thread
+    if delete_successful:
+        helpers.post_reply(
+                payload, "Ok, I deleted definition ID " + command, True)
+        return
+
+
+def __delete_definition_by_trigger(command, payload):
+    reply = ""
+    session = DBSession()
+    all_results = get_all_definitions_by_trigger(session, command.lower())
+
+    if not all_results or 1 > len(all_results):
+        # No definitions found
+        reply = "I'm sorry, I couldnt find a matching definition",
+    if 1 < len(all_results):
+        # Multiple definitions found
+        reply = "I know the following definitions for {0}:".format(command)
+        for result in all_results:
+            reply += "\n({0}) {1}{2}{3}".format(
+                    result.id,
+                    result.trigger,
+                    __get_relation_from_enum(result.relation),
+                    result.response)
+    else:
+        # One definition found
+        delete_definition_by_trigger(session, command.lower())
+        reply = "Ok, I deleted the definition for " + command
+
+    session.close()
+    helpers.post_reply(payload, reply, reply_in_thread=True)
 
 
 def __check_for_variables(response):
@@ -446,11 +509,10 @@ class Definition(featurebase.FeatureBase):
             if relation in lower_command:
                 new_definition = handle_add_definition(
                         command, relation, payload)
-                if not new_definition:
-                    # We were unable to add the new definition,
-                    #   so something was wrong with the command
-                    return False
-                self.triggers.add(new_definition)
+                if new_definition:
+                    # Only add the new trigger if we were actually
+                    #   able to add the new definition
+                    self.triggers.add(new_definition)
                 return True
 
         return False

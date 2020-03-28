@@ -4,7 +4,7 @@ import re
 TAG_CHECK_REGEX = re.compile(r'(<(?:@|#)[^ ]+>)')
 
 
-def post_message(client, channel_id, text, thread_ts=None,
+def post_message(client, channel_id, text=None, thread_ts=None,
                  blocks=None):
     client.chat_postMessage(
         channel=channel_id,
@@ -14,7 +14,7 @@ def post_message(client, channel_id, text, thread_ts=None,
     )
 
 
-def post_reply(payload, text, reply_in_thread=None, blocks=None):
+def post_reply(payload, text=None, reply_in_thread=None, blocks=None):
     data = payload['data']
     web_client = payload['web_client']
     channel_id = data['channel']
@@ -24,10 +24,10 @@ def post_reply(payload, text, reply_in_thread=None, blocks=None):
     #   and the payload came from a threaded message
     if (reply_in_thread is True or
        (reply_in_thread is None and 'thread_ts' in data)):
-        post_message(web_client, channel_id, text, thread_ts,
+        post_message(web_client, channel_id, text=text, thread_ts=thread_ts,
                      blocks=blocks)
     else:
-        post_message(web_client, channel_id, text, blocks=blocks)
+        post_message(web_client, channel_id, text=text, blocks=blocks)
 
 
 def dm_reply(payload, text, reply_in_thread=None):
@@ -47,7 +47,7 @@ def dm_reply(payload, text, reply_in_thread=None):
         post_message(web_client, channel_id, text)
 
 
-def react_reply(emoji_name, payload):
+def react_reply(payload, emoji_name):
     data = payload['data']
     client = payload['web_client']
     channel_id = data['channel']
