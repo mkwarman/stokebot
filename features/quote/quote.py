@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core import helpers, featurebase
+from core import featurebase
 from quote.dao import add_quote, get_quote_by_author
 from quote.sqlalchemy_declarative import Base
 
@@ -31,7 +31,7 @@ def handle_add(command, data, client):
     session.close()
 
     reply = "Ok, I saved quote: \"{0}\" by {1}".format(quote, author)
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 def handle_get(command, data, client):
@@ -46,17 +46,20 @@ def handle_get(command, data, client):
              .format(quote.quote, quote.author,
                      quote.date_time_added.strftime(DATE_FORMAT))
              if quote else "I don't know any quotes by {0}".format(author))
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 class Quotes(featurebase.FeatureBase):
-    def on_command(self, command, data, client):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_command(self, command, data):
         if command.lower().startswith(QUOTE_TRIGGER):
             stripped_command = command[len(QUOTE_TRIGGER):].strip()
             if "\"" in command:
-                handle_add(stripped_command, data, client)
+                handle_add(stripped_command, data, self.client)
             else:
-                handle_get(stripped_command, data, client)
+                handle_get(stripped_command, data, self.client)
             return True
 
 

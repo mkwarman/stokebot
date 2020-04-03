@@ -81,11 +81,11 @@ def handle_add_definition(command, relation, data, client):
         # Sanitize emojis since the api expects just their name without colons
         reactions = find_reactions(response)
         if reactions and MAX_TRIGGER_REACTIONS < len(reactions):
-            helpers.post_reply(client, data,
-                               "Wow that's a lot of emoji! " +
-                               "You'll need to keep it under " +
-                               str(MAX_TRIGGER_REACTIONS) + ", please.",
-                               reply_in_thread=True)
+            client.post_reply(data,
+                              "Wow that's a lot of emoji! " +
+                              "You'll need to keep it under " +
+                              str(MAX_TRIGGER_REACTIONS) + ", please.",
+                              reply_in_thread=True)
             return
         response = ','.join(reactions)
 
@@ -99,10 +99,10 @@ def handle_add_definition(command, relation, data, client):
     session.close()
 
     # Get friendly name for user, construct reply and then send it
-    user_name = helpers.get_first_name_from_id(user, client)
+    user_name = client.get_first_name_from_id(user)
     reply = "Ok {0}, I'll remember {1}{2}{3}".format(user_name, trigger,
                                                      relation, reply_response)
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
     return trigger
 
@@ -141,22 +141,23 @@ def handle_triggers(text, distinct_words, known_triggers, data, client):
             def_relation = __get_relation_from_enum(RelationEnum(
                 found_def.relation))
 
+            found_response = __check_for_variables(found_def.response)
+
             # reply_responses
             if def_relation == REPLY_RELATION:
-                reply_responses.append(found_def.response)
+                reply_responses.append(found_response)
             # action_responses
             elif def_relation == ACTION_RELATION:
-                action_responses.append(found_def.response)
+                action_responses.append(found_response)
             # reaction_responses
             elif def_relation == REACT_RELATION:
-                react_responses.append(
-                        __check_for_variables(found_def.response))
+                react_responses.append(found_response)
             # means_responses
             elif def_relation == MEANS_RELATION:
-                means_responses.append((found_def.trigger, found_def.response))
+                means_responses.append((trigger, found_response))
             # is_responses
             elif def_relation == IS_RELATION:
-                is_responses.append((found_def.trigger, found_def.response))
+                is_responses.append((trigger, found_response))
             else:
                 # this shouldnt happen
                 return
@@ -218,7 +219,7 @@ def ask_for_definitions(words_to_define, user, data, client):
         return
 
     # DM the target user to ask for a definition. Do not reply in thread
-    helpers.dm_reply(client, data, message, False)
+    client.dm_reply(data, message, False)
 
 
 def handle_ignore(should_ignore, data, client):
@@ -229,8 +230,7 @@ def handle_ignore(should_ignore, data, client):
         return
 
     session = DBSession()
-    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(
-        user, client))
+    reply = "Ok, {0}, I will ".format(client.get_first_name_from_id(user))
 
     if should_ignore:
         insert_ignored(session, user)
@@ -241,7 +241,7 @@ def handle_ignore(should_ignore, data, client):
 
     session.close()
     reply += "listening to you."
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 def handle_blacklist(should_blacklist, trigger, data, client):
@@ -252,8 +252,7 @@ def handle_blacklist(should_blacklist, trigger, data, client):
         return
 
     session = DBSession()
-    reply = "Ok, {0}, I will ".format(helpers.get_first_name_from_id(
-        user, client))
+    reply = "Ok, {0}, I will ".format(client.get_first_name_from_id(user))
 
     if should_blacklist:
         insert_blacklist(session, trigger, user)
@@ -264,7 +263,7 @@ def handle_blacklist(should_blacklist, trigger, data, client):
 
     session.close()
     reply += "the blacklist."
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 def handle_list_definition(command, data, client):
@@ -274,7 +273,7 @@ def handle_list_definition(command, data, client):
 
     if not all_results or 1 > len(all_results):
         reply = "Hmm, I don't know any definitions for {0}".format(command)
-        helpers.post_reply(client, data, reply, reply_in_thread=True)
+        client.post_reply(data, reply, reply_in_thread=True)
         return
 
     reply = "I know the following definitions for {0}:".format(command)
@@ -286,7 +285,7 @@ def handle_list_definition(command, data, client):
                 __get_relation_from_enum(result.relation),
                 result.response)
 
-    helpers.post_reply(client, data, reply, reply_in_thread=True)
+    client.post_reply(data, reply, reply_in_thread=True)
 
 
 def handle_delete_definition(command, data, client):
@@ -360,17 +359,17 @@ def __handle_react_responses(responses, data, client):
         distinct_reactions = distinct_reactions[:MAX_TOTAL_REACTIONS]
 
     for reaction in distinct_reactions:
-        helpers.react_reply(client, data, reaction)
+        client.react_reply(data, reaction)
 
 
 def __handle_action_responses(responses, data, client):
     for response in responses:
-        helpers.post_reply(client, data, "_{0}_".format(response))
+        client.post_reply(data, "_{0}_".format(response))
 
 
 def __handle_reply_responses(responses, data, client):
     for response in responses:
-        helpers.post_reply(client, data, "{0}".format(response))
+        client.post_reply(data, "{0}".format(response))
 
 
 def __handle_means_responses(trigger_response_pairs, data, client):
@@ -384,7 +383,7 @@ def __handle_means_responses(trigger_response_pairs, data, client):
         reply += ("*{0}* means _{1}_".format(
             trigger_response_pair[0], trigger_response_pair[1]))
 
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 def __handle_is_responses(trigger_response_pairs, data, client):
@@ -398,7 +397,7 @@ def __handle_is_responses(trigger_response_pairs, data, client):
         reply += ("{0} is {1}".format(trigger_response_pair[0],
                                       trigger_response_pair[1]))
 
-    helpers.post_reply(client, data, reply)
+    client.post_reply(data, reply)
 
 
 def __delete_definition_by_id(def_id, command, data, client):
@@ -408,8 +407,7 @@ def __delete_definition_by_id(def_id, command, data, client):
 
     # Reply inside thread
     if delete_successful:
-        helpers.post_reply(
-                client, data, "Ok, I deleted definition ID " + command, True)
+        client.post_reply(data, "Ok, I deleted definition ID " + command, True)
         return
 
 
@@ -436,7 +434,7 @@ def __delete_definition_by_trigger(command, data, client):
         reply = "Ok, I deleted the definition for " + command
 
     session.close()
-    helpers.post_reply(client, data, reply, reply_in_thread=True)
+    client.post_reply(data, reply, reply_in_thread=True)
 
 
 def __check_for_variables(response):
@@ -458,7 +456,10 @@ class Definition(featurebase.FeatureBase):
     def __init__(self):
         self.triggers = get_known_triggers()
 
-    def on_message(self, text, data, client):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_message(self, text, data):
         user = helpers.get_user_from_data(data)
         if is_ignored_user(user):
             return
@@ -469,7 +470,7 @@ class Definition(featurebase.FeatureBase):
         distinct_words = set(sanitize_and_split_words(text))
 
         # Check to see if there are any triggers in the text
-        handle_triggers(text, distinct_words, self.triggers, data, client)
+        handle_triggers(text, distinct_words, self.triggers, data, self.client)
 
         if user in os.getenv('DEFINITION_TARGET_USER_ID').split(','):
             # Remove known triggers from the set
@@ -480,35 +481,35 @@ class Definition(featurebase.FeatureBase):
             #   and handle them if found
             unknown_words = find_unknown_words(distinct_words)
             if unknown_words:
-                handle_unknown_words(unknown_words, user, data, client)
+                handle_unknown_words(unknown_words, user, data, self.client)
 
-    def on_command(self, command, data, client):
+    def on_command(self, command, data):
         lower_command = command.lower()
         if lower_command.startswith("ignore me"):
-            handle_ignore(True, data, client)
+            handle_ignore(True, data, self.client)
             return True
         elif lower_command.startswith("listen to me"):
-            handle_ignore(False, data, client)
+            handle_ignore(False, data, self.client)
             return True
         elif lower_command.startswith("blacklist add"):
-            handle_blacklist(True, command[14:], data, client)
+            handle_blacklist(True, command[14:], data, self.client)
             return True
         elif lower_command.startswith("blacklist remove") \
                 or lower_command.startswith("blacklist delete"):
-            handle_blacklist(False, command[17:], data, client)
+            handle_blacklist(False, command[17:], data, self.client)
             return True
         elif lower_command.startswith("definition remove") \
                 or lower_command.startswith("definition delete"):
-            handle_delete_definition(command[18:], data, client)
+            handle_delete_definition(command[18:], data, self.client)
             return True
         elif lower_command.startswith("definition list"):
-            handle_list_definition(command[16:], data, client)
+            handle_list_definition(command[16:], data, self.client)
             return True
 
         for relation in RELATIONS:
             if relation in lower_command:
                 new_definition = handle_add_definition(
-                        command, relation, data, client)
+                        command, relation, data, self.client)
                 if new_definition:
                     # Only add the new trigger if we were actually
                     #   able to add the new definition

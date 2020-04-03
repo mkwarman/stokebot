@@ -16,22 +16,26 @@ def say_hello(data, web_client):
 
 
 class Testing(featurebase.FeatureBase):
-    def on_message(self, text, data, client):
-        say_hello(data, client)
+    def slack_connected(self, client):
+        self.client = client
 
-    def on_command(self, command, data, client):
+    def on_message(self, text, data):
+        say_hello(data, self.client)
+
+    def on_command(self, command, data):
         if (command.lower() == ("test") or
            command.lower() == ("status")):
-            helpers.post_reply(client, data, "I'm here!")
+            self.client.post_reply(data, "I'm here!")
             return True
 
         if (command.lower() == ("newtest")):
-            helpers.post_reply(client, data, "server test active!",
-                               override=True)
+            self.client.post_reply(data, "server test active!",
+                                   override_silent=True)
             return True
 
         if (command.lower() == ("dm me")):
-            helpers.dm_reply(client, data, "Lemme slide into those DMs, fam")
+            self.client.dm_reply(data,
+                                 "Lemme slide into those DMs, fam")
             return True
 
 

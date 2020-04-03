@@ -35,7 +35,7 @@ def handle_karma_matches(matches, data, client):
     session.close()
 
     if (len(responses) > 0):
-        helpers.post_reply(client, data, "\n".join(responses))
+        client.post_reply(data, "\n".join(responses))
 
 
 def handle_karma_change(match, session, data, client):
@@ -58,7 +58,7 @@ def handle_karma_change(match, session, data, client):
         delta = MAX_KARMA_CHANGE
 
     # If subject is a user, get their friendly name before replying
-    name = helpers.to_first_name_if_tag(subject, client)
+    name = client.to_first_name_if_tag(subject)
     reply = "{0}'s karma has".format(name)
 
     if operator[0] == '+':
@@ -83,7 +83,7 @@ def handle_command(command, data, client):
         handle_top_karma(data, client)
         return
 
-    response = helpers.to_first_name_if_tag(key, client)
+    response = client.to_first_name_if_tag(key)
 
     session = DBSession()
     karma = get_by_subject(session, key)
@@ -94,7 +94,7 @@ def handle_command(command, data, client):
     else:
         response += "'s karma is " + str(karma)
 
-    helpers.post_reply(client, data, response)
+    client.post_reply(data, response)
 
 
 def handle_top_karma(data, client):
@@ -104,22 +104,25 @@ def handle_top_karma(data, client):
     session.close()
 
     for entry in karma_entries:
-        name = helpers.to_real_name_if_tag(entry, client)
+        name = client.to_real_name_if_tag(entry)
         response += ("\n{0}: {1}".format(name, karma_entries[entry]))
 
-    helpers.post_reply(client, data, response)
+    client.post_reply(data, response)
 
 
 class Karma(featurebase.FeatureBase):
-    def on_message(self, text, data, client):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_message(self, text, data):
         # Check for possible karma changes
         karma_matches = KARMA_REGEX.findall(text)
         if (len(karma_matches) > 0):
-            handle_karma_matches(karma_matches, data, client)
+            handle_karma_matches(karma_matches, data, self.client)
 
-    def on_command(self, command, data, client):
+    def on_command(self, command, data):
         if (command.lower().startswith('karma')):
-            handle_command(command, data, client)
+            handle_command(command, data, self.client)
             return True
 
     def get_help(self):

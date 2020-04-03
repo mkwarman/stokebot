@@ -4,9 +4,11 @@ import pkgutil
 import slack
 import traceback
 import json
+import argparse
 from importlib import import_module
 from core import helpers, featurebase
 from core.builders import BlocksBuilder
+from core.client import Client
 from dotenv import load_dotenv
 from flask import Flask, request
 
@@ -16,7 +18,8 @@ load_dotenv()
 
 BOT_MATCH = "<@{0}>".format(os.getenv("BOT_ID"))
 feature_classes = []
-client = None
+args = None
+slack_client = None
 
 
 # Load all features from features directory, instantiate their associate
@@ -56,19 +59,13 @@ def load_feature(feature):
         print("Loaded feature: %s" % feature)
 
 
-def slack_connected():
-    helpers.post_message(client, os.getenv("PRIVATE_TEST_CHANNEL_ID"),
-                         "Hello world!")
+def slack_connected(client):
+    client.post_message(os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                        "Hello world!")
 
     for feature in feature_classes:
         print("telling " + str(feature) + " that we're connected to slack")
         feature.slack_connected(client)
-
-
-def ready():
-    for feature in feature_classes:
-        print("telling " + str(feature) + " that we're ready")
-        feature.ready()
 
 
 def on_message(data):
@@ -87,7 +84,7 @@ def on_message(data):
         if 'subtype' in data \
                 and 'me_message' == data['subtype']:
             for feature in feature_classes:
-                feature.on_me_message(client, data, text)
+                feature.on_me_message(text, data)
 
         # Command
         if text.startswith(BOT_MATCH) and not (
@@ -107,18 +104,17 @@ def on_message(data):
             for feature in feature_classes:
                 command_matched = (command_matched
                                    or feature.on_command(command,
-                                                         data,
-                                                         client))
+                                                         data))
 
             if not command_matched:
-                helpers.post_reply(
-                        client, data,
-                        "I'm sorry, I didnt recognize that command :pensive:")
+                client.post_reply(
+                       data,
+                       "I'm sorry, I didnt recognize that command :pensive:")
 
         # Regular message
         else:
             for feature in feature_classes:
-                feature.on_message(text, data, client)
+                feature.on_message(text, data)
     except Exception as e:
         exception_message = ("TEST Encountered error: " + str(e) +
                              "\nTEST Traceback:\n```\n" +
@@ -126,11 +122,10 @@ def on_message(data):
                              "\nTEST Payload Data:\n```\n" +
                              json.dumps(data) + "\n```")
         print(exception_message)
-        helpers.post_message(client,
-                             # os.getenv("TEST_CHANNEL_ID"),
-                             os.getenv("PRIVATE_TEST_CHANNEL_ID"),
-                             exception_message,
-                             override=True)
+        client.post_message(os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                            #  os.getenv("TEST_CHANNEL_ID"),
+                            exception_message,
+                            override_silent=True)
 
 
 def __handle_help_command(data, client):
@@ -144,8 +139,8 @@ def __handle_help_command(data, client):
                 bb.add_divider()
             bb.add_blocks(feature_help)
 
-    helpers.post_reply(client, data, text,
-                       blocks=json.dumps(bb.blocks))
+    client.post_reply(data, text,
+                      blocks=json.dumps(bb.blocks))
 
 
 @application.route("/slack/event", methods=["POST"])
@@ -165,17 +160,34 @@ def message_actions():
     return "ok"
 
 
+def load_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--silent', action='store_true',
+                        help='Logs actions instead of sending them to slack')
+    parser.add_argument('--host',
+                        help='Specity host for test server to listen on')
+    parser.add_argument('--port',
+                        help='Specity port for test server to listen on')
+    return parser.parse_args()
+
+
 def setup():
+    global args
+    args = load_args()
+
     load_features()
 
-    global client
-    client = slack.WebClient(token=os.getenv("SLACK_TOKEN"))
-    slack_connected()
+    if (args.silent):
+        print("\n**************** STARTING IN SILENT MODE ****************\n")
 
-    ready()
+    global client
+    client = Client(slack.WebClient(token=os.getenv("SLACK_TOKEN")),
+                    silent=args.silent)
+
+    slack_connected(client)
 
 
 setup()
 
 if __name__ == "__main__":
-    application.run()
+    application.run(host=args.host, port=args.port)
