@@ -12,7 +12,7 @@ from definition.dao import get_definition_by_trigger, \
                            delete_definition_by_id, \
                            delete_definition_by_trigger, \
                            increment_word_usage, \
-                           check_blacklist, \
+                           get_blacklisted_triggers, \
                            insert_blacklist, \
                            remove_blacklist, \
                            check_ignored, \
@@ -181,20 +181,24 @@ def handle_unknown_words(unknown_words, user, data, client):
     session = DBSession()
 
     words_to_define = []
+    blacklisted_words = get_blacklisted_triggers(session)
     for word in unknown_words:
         # Check for unknown word in blacklist
-        found = check_blacklist(session, word)
-        if found:
+        if word in blacklisted_words:
             return
+
         # Check for unknown word in triggers
         found = check_trigger(session, word)
         if found:
             return
+
         # Check for unknown word in dictionary
         found = check_dictionary(word)
         if found:
             insert_blacklist(session, word, 'dictionary')
+            blacklisted_words.append(word)
             return
+
         words_to_define.append(word)
 
     session.close()

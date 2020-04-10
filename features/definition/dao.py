@@ -76,6 +76,13 @@ def check_blacklist(session, trigger):
             .one_or_none()
 
 
+def get_blacklisted_triggers(session):
+    triggers = session.query(Blacklist.trigger)
+
+    # extract values from 1-element tuples
+    return [i[0] for i in triggers]
+
+
 def insert_blacklist(session, trigger, user):
     if check_blacklist(session, trigger):
         return
