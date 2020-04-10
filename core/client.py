@@ -121,6 +121,9 @@ class Client:
 
         return None
 
+    def set_silent(self, silent):
+        self.silent = silent
+
     def to_real_name_if_tag(self, text):
         search_result = TAG_CHECK_REGEX.search(text)
 

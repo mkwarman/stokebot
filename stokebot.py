@@ -171,23 +171,15 @@ def load_args():
     return parser.parse_args()
 
 
-def setup():
-    global args
-    args = load_args()
-
-    load_features()
-
-    if (args.silent):
-        print("\n**************** STARTING IN SILENT MODE ****************\n")
-
-    global client
-    client = Client(slack.WebClient(token=os.getenv("SLACK_TOKEN")),
-                    silent=args.silent)
-
-    slack_connected(client)
-
-
-setup()
+load_features()
+client = Client(slack.WebClient(token=os.getenv("SLACK_TOKEN")))
+slack_connected(client)
 
 if __name__ == "__main__":
+    args = load_args()
+
+    if (args.silent):
+        client.set_silent(True)
+        print("\n**************** STARTING IN SILENT MODE ****************\n")
+
     application.run(host=args.host, port=args.port)
