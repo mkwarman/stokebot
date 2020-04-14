@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core import helpers, featurebase
+from core import featurebase
 from quote.dao import add_quote, get_quote_by_author
 from quote.sqlalchemy_declarative import Base
 
@@ -20,7 +20,7 @@ QUOTE_TRIGGER = 'quote'
 DATE_FORMAT = "%m/%d/%y"
 
 
-def handle_add(command, payload):
+def handle_add(command, data, client):
     print("got quote add")
     split_command = command.split("\"")
     author = split_command[0].strip()
@@ -31,10 +31,10 @@ def handle_add(command, payload):
     session.close()
 
     reply = "Ok, I saved quote: \"{0}\" by {1}".format(quote, author)
-    helpers.post_reply(payload, reply)
+    client.post_reply(data, reply)
 
 
-def handle_get(command, payload):
+def handle_get(command, data, client):
     print("got quote get")
     author = command
     print("looking for quotes by author {0}".format(author))
@@ -46,17 +46,20 @@ def handle_get(command, payload):
              .format(quote.quote, quote.author,
                      quote.date_time_added.strftime(DATE_FORMAT))
              if quote else "I don't know any quotes by {0}".format(author))
-    helpers.post_reply(payload, reply)
+    client.post_reply(data, reply)
 
 
 class Quotes(featurebase.FeatureBase):
-    def on_command(self, command, payload):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_command(self, command, data):
         if command.lower().startswith(QUOTE_TRIGGER):
             stripped_command = command[len(QUOTE_TRIGGER):].strip()
             if "\"" in command:
-                handle_add(stripped_command, payload)
+                handle_add(stripped_command, data, self.client)
             else:
-                handle_get(stripped_command, payload)
+                handle_get(stripped_command, data, self.client)
             return True
 
 

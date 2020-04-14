@@ -2,7 +2,7 @@ import os
 import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core import helpers, featurebase
+from core import featurebase
 from held_items.dao import insert_item, swap_items, get_item_count, \
         get_held_items
 from held_items.sqlalchemy_declarative import Base
@@ -25,16 +25,14 @@ HELD_ITEMS_TRIGGERS = ["items held", "held items"]
 MAX_HELD_ITEMS = 5
 
 
-def handle_give(item, payload):
+def handle_give(item, data, client):
     session = DBSession()
 
     count = get_item_count(session)
 
-    data = payload['data']
-    client = payload['web_client']
     user_id = data['user']
 
-    user_name = helpers.get_first_name_from_id(user_id, client)
+    user_name = client.get_first_name_from_id(user_id)
 
     reply = "_takes {0} from {1}".format(item, user_name)
 
@@ -48,10 +46,10 @@ def handle_give(item, payload):
         reply += "_"
 
     session.close()
-    helpers.post_reply(payload, reply)
+    client.post_reply(data, reply)
 
 
-def handle_list(payload):
+def handle_list(data, client):
     session = DBSession()
 
     items = get_held_items(session)
@@ -61,19 +59,22 @@ def handle_list(payload):
     reply = ("I'm currently holding {0}".format(', '.join(items)) if items
              else "I'm not currently holding anything!")
 
-    helpers.post_reply(payload, reply)
+    client.post_reply(data, reply)
 
 
 class HeldItems(featurebase.FeatureBase):
-    def on_me_message(self, text, payload):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_me_message(self, text, data):
         item_operation = TRIGGER_REGEX.search(text)
         if item_operation:
-            handle_give(item_operation.group(1), payload)
+            handle_give(item_operation.group(1), data, self.client)
 
-    def on_command(self, command, payload):
+    def on_command(self, command, data):
         for trigger in HELD_ITEMS_TRIGGERS:
             if command.lower().startswith(trigger):
-                handle_list(payload)
+                handle_list(data, self.client)
                 return True
 
 

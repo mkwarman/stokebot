@@ -25,28 +25,27 @@ TOP_KARMA_SUBCOMMAND = "top"
 KARMA_REGEX = re.compile(r'((?:<(?:@|#)[^ ]+>)|\w+) ?(\+\++|--+)')
 
 
-def handle_karma_matches(matches, payload):
+def handle_karma_matches(matches, data, client):
     session = DBSession()
     responses = []
 
     for match in matches:
-        responses.append(handle_karma_change(match, payload, session))
+        responses.append(handle_karma_change(match, session, data, client))
 
     session.close()
 
     if (len(responses) > 0):
-        helpers.post_reply(payload, "\n".join(responses))
+        client.post_reply(data, "\n".join(responses))
 
 
-def handle_karma_change(match, payload, session):
+def handle_karma_change(match, session, data, client):
     subject = match[0].lower()
-    client = payload['web_client']
     operator = match[1]
     max_change_triggered = False
 
     # If user tried to change their own karma,
     #   reply and return without changing anything
-    user = helpers.get_user_from_payload(payload)
+    user = helpers.get_user_from_data(data)
     if (user and subject[2:-1] == user.lower()):
         reply = "It's rude to toot your own horn" if operator[0] == '+' \
                 else "Don't be so hard on yourself!"
@@ -59,7 +58,7 @@ def handle_karma_change(match, payload, session):
         delta = MAX_KARMA_CHANGE
 
     # If subject is a user, get their friendly name before replying
-    name = helpers.to_first_name_if_tag(subject, client)
+    name = client.to_first_name_if_tag(subject)
     reply = "{0}'s karma has".format(name)
 
     if operator[0] == '+':
@@ -77,15 +76,14 @@ def handle_karma_change(match, payload, session):
     return reply
 
 
-def handle_command(command, payload):
+def handle_command(command, data, client):
     key = command.split(" ")[1].lower()  # 'karma '
-    client = payload['web_client']
 
     if (key == TOP_KARMA_SUBCOMMAND):
-        handle_top_karma(client, payload)
+        handle_top_karma(data, client)
         return
 
-    response = helpers.to_first_name_if_tag(key, client)
+    response = client.to_first_name_if_tag(key)
 
     session = DBSession()
     karma = get_by_subject(session, key)
@@ -96,32 +94,35 @@ def handle_command(command, payload):
     else:
         response += "'s karma is " + str(karma)
 
-    helpers.post_reply(payload, response)
+    client.post_reply(data, response)
 
 
-def handle_top_karma(client, payload):
+def handle_top_karma(data, client):
     response = "Top karma entries:"
     session = DBSession()
     karma_entries = get_top(session, TOP_KARMA_LIMIT)
     session.close()
 
     for entry in karma_entries:
-        name = helpers.to_real_name_if_tag(entry, client)
+        name = client.to_real_name_if_tag(entry)
         response += ("\n{0}: {1}".format(name, karma_entries[entry]))
 
-    helpers.post_reply(payload, response)
+    client.post_reply(data, response)
 
 
 class Karma(featurebase.FeatureBase):
-    def on_message(self, text, payload):
+    def slack_connected(self, client):
+        self.client = client
+
+    def on_message(self, text, data):
         # Check for possible karma changes
         karma_matches = KARMA_REGEX.findall(text)
         if (len(karma_matches) > 0):
-            handle_karma_matches(karma_matches, payload)
+            handle_karma_matches(karma_matches, data, self.client)
 
-    def on_command(self, command, payload):
+    def on_command(self, command, data):
         if (command.lower().startswith('karma')):
-            handle_command(command, payload)
+            handle_command(command, data, self.client)
             return True
 
     def get_help(self):
