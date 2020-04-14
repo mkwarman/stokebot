@@ -60,9 +60,6 @@ def load_feature(feature):
 
 
 def slack_connected(client):
-    client.post_message(os.getenv("PRIVATE_TEST_CHANNEL_ID"),
-                        "Hello world!")
-
     for feature in feature_classes:
         print("telling " + str(feature) + " that we're connected to slack")
         feature.slack_connected(client)
@@ -183,3 +180,6 @@ if __name__ == "__main__":
         print("\n**************** STARTING IN SILENT MODE ****************\n")
 
     application.run(host=args.host, port=args.port)
+
+client.post_message(os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+                    "Hello world!")
