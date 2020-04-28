@@ -3,4 +3,4 @@
 source venv/bin/activate
 
 #python3 stokebot.py
-gunicorn --workers 2 wsgi
+gunicorn --workers 1 wsgi

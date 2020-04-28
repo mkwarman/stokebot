@@ -113,16 +113,21 @@ def on_message(data):
             for feature in feature_classes:
                 feature.on_message(text, data)
     except Exception as e:
-        exception_message = ("TEST Encountered error: " + str(e) +
-                             "\nTEST Traceback:\n```\n" +
+        exception_message = ("Encountered error: " + str(e) +
+                             "\nTraceback:\n```\n" +
                              traceback.format_exc() + "```" +
-                             "\nTEST Payload Data:\n```\n" +
+                             "\nPayload Data:\n```\n" +
                              json.dumps(data) + "\n```")
         print(exception_message)
-        client.post_message(os.getenv("PRIVATE_TEST_CHANNEL_ID"),
+        client.post_message(os.getenv("TEST_CHANNEL_ID"),
                             #  os.getenv("TEST_CHANNEL_ID"),
                             exception_message,
                             override_silent=True)
+
+
+def on_interaction(data):
+    print('in on_interation, got data:')
+    print(data)
 
 
 def __handle_help_command(data, client):
@@ -153,6 +158,21 @@ def message_actions():
        and 'type' in body['event']
        and body['event']['type'] == 'message'):
         on_message(body['event'])
+
+    return "ok"
+
+
+@application.route("/slack/interaction", methods=["POST"])
+def interaction_actions():
+    print('in interaction_actions')
+    body = request.form
+
+    print(body)
+
+    if ('event' in body
+       and 'type' in body['event']
+       and body['event']['type'] == 'message'):
+        on_interaction(body['event'])
 
     return "ok"
 

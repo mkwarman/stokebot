@@ -31,21 +31,38 @@ class SectionBuilder():
 
     def reset(self):
         self._text = []
+        self._accessory = []
 
     @property
     def section(self):
         text = "".join(self._text)
-        self.reset()
-        return {
-            "type": "section",
-            "text": {
+        block = {"type": "section"}
+
+        if (self._text):
+            block['text'] = {
                 "type": "mrkdwn",
                 "text": text
             }
-        }
+
+        if (self._accessory):
+            block['accessory'] = self._accessory
+
+        self.reset()
+        return block
 
     def add_text(self, text):
         self._text.append(text)
+
+    def add_button(self, text, value, button_type='plain_text', emoji=True):
+        self._accessory = {
+            "type": "button",
+            "text": {
+                "type": button_type,
+                "text": text,
+                "emoji": emoji
+            },
+            "value": value
+        }
 
     def format_text(self, **kwargs):
         self._text = "".join(self._text).format(**kwargs)

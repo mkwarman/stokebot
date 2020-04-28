@@ -15,7 +15,7 @@ class Client:
     def post_message(self, channel_id, text=None, thread_ts=None,
                      blocks=None, override_silent=False):
         if (not self.silent) or override_silent:
-            self.client.chat_postMessage(
+            return self.client.chat_postMessage(
                 channel=channel_id,
                 text=text,
                 thread_ts=thread_ts,
@@ -26,6 +26,20 @@ class Client:
                     'thread_ts': thread_ts, 'blocks': blocks}
             print("posting disabled, would have sent:\n    ", data)
 
+    def update(self, channel_id, timestamp, text=None,
+               blocks=None, override_silent=False):
+        if (not self.silent) or override_silent:
+            return self.client.chat_update(
+                channel=channel_id,
+                ts=timestamp,
+                text=text,
+                blocks=blocks
+            )
+        else:
+            data = {'channel': channel_id, 'ts': timestamp,
+                    'text': text, 'blocks': blocks}
+            print("posting disabled, would have updated:\n    ", data)
+
     def post_reply(self, data, text=None, reply_in_thread=None, blocks=None,
                    override_silent=False):
         channel_id = data['channel']
@@ -35,11 +49,12 @@ class Client:
         #   and the message came from a threaded message
         if (reply_in_thread is True or
            (reply_in_thread is None and 'thread_ts' in data)):
-            self.post_message(channel_id, text=text, thread_ts=thread_ts,
-                              blocks=blocks, override_silent=override_silent)
+            return self.post_message(channel_id, text=text,
+                                     thread_ts=thread_ts, blocks=blocks,
+                                     override_silent=override_silent)
         else:
-            self.post_message(channel_id, text=text, blocks=blocks,
-                              override_silent=override_silent)
+            return self.post_message(channel_id, text=text, blocks=blocks,
+                                     override_silent=override_silent)
 
     def dm_reply(self, data, text, reply_in_thread=None):
         user = data['user']
@@ -51,9 +66,9 @@ class Client:
         #   and the message came from a threaded message
         if (reply_in_thread is True or
            (reply_in_thread is None and 'thread_ts' in data)):
-            self.post_message(channel_id, text, thread_ts)
+            return self.post_message(channel_id, text, thread_ts)
         else:
-            self.post_message(channel_id, text)
+            return self.post_message(channel_id, text)
 
     def react_reply(self, data, emoji_name):
         channel_id = data['channel']

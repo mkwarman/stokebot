@@ -27,7 +27,7 @@ EMOJI_REGEX = re.compile(r":[^: ]+:|([0-9]{1,2}(:[0-9]{1,2})?(am|pm))")
 SYMBOLS_REGEX = re.compile(r"[^a-z'-]+")
 COMBINED_WORDS_REGEX = re.compile(r"[a-z]*[_\-']+[a-z]*")
 
-REACTIONS_REGEX = re.compile(r"(?:\:([0-9a-z+_']+)\:)")
+REACTIONS_REGEX = re.compile(r"(?:\:([0-9a-z+\-_']+(?:\:\:skin-tone-[0-9]+)?)\:)") # noqa
 
 
 def known(words):
