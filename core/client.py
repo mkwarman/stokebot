@@ -75,11 +75,21 @@ class Client:
         timestamp = data['ts']
 
         if not self.silent:
-            self.client.reactions_add(
-                name=emoji_name,
-                channel=channel_id,
-                timestamp=timestamp
-            )
+            try:
+                self.client.reactions_add(
+                    name=emoji_name,
+                    channel=channel_id,
+                    timestamp=timestamp
+                )
+            except Exception as ex:
+                # TODO: Remove this once the 'already reacted' issue is resolved # noqa
+                print('\n\n    ****** Got exception while trying to react, start info block: ******\n\n') # noqa
+                print('\n\n    DATA:\n    ')
+                print(data)
+                print('\n\n    EMOJI NAME:\n    ')
+                print(emoji_name)
+                print('\n\n    ****** End info block: ******\n\n')
+                raise ex
         else:
             data = {'channel': channel_id, 'name': emoji_name,
                     'timestamp': timestamp}
