@@ -7,4 +7,4 @@ gunicorn==20.0.4
 # Features requirements
 
 # definition feature
-requests==2.23.0
+requests==2.31.0
